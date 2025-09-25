@@ -1,0 +1,216 @@
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  password String
+  status UserStatus @default(PENDING)
+  role UserRole @default(USER)
+  two_factor_secret String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tokens Token[]
+  goals Goals[]
+  transactions Transactions[]
+  budgets Budget[]
+  investments Investment[]
+  payments Payment[]
+  debt_plans DebtPlan[]
+  community_posts CommunityPost[]
+  challenge_participants ChallengeParticipant[]
+  notifications Notification[]
+  audit_logs AuditLog[]
+  sustainability_scores SustainabilityScore[]
+  @@index([email])
+}
+
+model Token {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token String
+  type TokenType
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  @@index([user_id])
+}
+
+model Goals {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  name String
+  target_amount Decimal @db.Decimal(15, 2)
+  current_amount Decimal @db.Decimal(15, 2)
+  deadline DateTime?
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model Transactions {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  amount Decimal @db.Decimal(15, 2)
+  category String
+  description String?
+  date DateTime
+  is_recurring Boolean @default(false)
+  source String @default("manual")
+  createdAt DateTime @default(now())
+  sustainability_scores SustainabilityScore[]
+  @@index([user_id])
+  @@index([date])
+}
+
+model Budget {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category String
+  limit_amount Decimal @db.Decimal(15, 2)
+  month DateTime
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model Investment {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  symbol String
+  quantity Decimal @db.Decimal(15, 4)
+  purchase_price Decimal @db.Decimal(15, 2)
+  purchase_date DateTime
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model Payment {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  amount Decimal @db.Decimal(15, 2)
+  recipient String
+  stripe_payment_id String?
+  status PaymentStatus
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model DebtPlan {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  debt_name String
+  amount Decimal @db.Decimal(15, 2)
+  interest_rate Decimal @db.Decimal(5, 2)
+  strategy DebtStrategy
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model CommunityPost {
+  id String @id @default(cuid())
+  user_id String?
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  content String
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model Challenge {
+  id String @id @default(cuid())
+  name String
+  description String?
+  start_date DateTime
+  end_date DateTime
+  createdAt DateTime @default(now())
+  challenge_participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  challenge_id String
+  challenge Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  progress Decimal @db.Decimal(15, 2) @default(0)
+  createdAt DateTime @default(now())
+  @@index([user_id])
+  @@index([challenge_id])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type NotificationType
+  message String
+  sentAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  user_id String?
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  action String
+  details Json
+  createdAt DateTime @default(now())
+  @@index([user_id])
+}
+
+model SustainabilityScore {
+  id String @id @default(cuid())
+  user_id String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transaction_id String
+  transaction Transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+  carbon_score Decimal @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  @@index([user_id])
+  @@index([transaction_id])
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  FAMILY_ADMIN
+}
+
+enum TokenType {
+  REFRESH
+  CONFIRMATION
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum DebtStrategy {
+  SNOWBALL
+  AVALANCHE
+}
+
+enum NotificationType {
+  EMAIL
+  PUSH
+}
