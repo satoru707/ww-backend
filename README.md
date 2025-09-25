@@ -1,153 +1,86 @@
-WealthWave Backend 🌊💰
-
-WealthWave is a modern personal finance app built with NestJS, Prisma, and PostgreSQL. Track transactions, manage budgets, invest smartly, pay bills, and join community challenges—all with blazing-fast performance thanks to Prisma Accelerate. 🚀
-
-📋 Table of Contents
-
-✨ Features
-
-🛠️ Tech Stack
-
-📋 Prerequisites
-
-⚙️ Setup
-
-🗄️ Prisma Configuration
-
-🏃‍♂️ Running the Application
-
-📚 Database Schema
-
-⚡ Prisma Accelerate
-
-🌐 API Endpoints
-
-🧪 Testing
-
-🤝 Contributing
-
-📜 License
-
-✨ Features
-
-🔒 User Management: Secure registration, login, and email confirmation with JWT and 2FA.
-
-💸 Transactions: Track expenses/income, sync with banks via Plaid.
-
-📊 Budgets: Set monthly category-based budgets with alerts.
-
-📈 Investments: Manage portfolios with real-time data (Alpha Vantage/CoinGecko).
-
-💳 Bill Payments: Process payments via Stripe.
-
-🌍 Community: Share posts and join savings challenges with leaderboards.
-
-🤖 Analytics: AI-driven insights for spending and investments.
-
-🌱 Sustainability: Track transaction carbon footprints.
-
-🛡️ Security: Audit logs, rate-limiting, and secure token handling.
-
-🛠️ Tech Stack
-
-Technology
-
-Version
-
-Purpose
-
-Node.js
-
-18+
-
-Runtime environment
-
-NestJS
-
-10+
-
-Backend framework (TypeScript)
-
-Prisma
-
-5+
-
-ORM with Accelerate
-
-PostgreSQL
-
-13+
-
-Relational database
-
-PNPM
-
-8+
-
-Package manager
-
-JWT/bcrypt
-
--
-
-Authentication and hashing
-
-Plaid
-
--
-
-Bank transaction sync
-
-Stripe
-
--
-
-Payment processing
-
-Nodemailer
-
--
-
-Email notifications
-
-Redis
-
--
-
-Optional caching/leaderboards
-
-MongoDB
-
--
-
-Optional analytics logs
-
-📋 Prerequisites
-
-Node.js: v18+ (Install)
-
-PNPM: Install globally: npm install -g pnpm
-
-PostgreSQL: v13+, running locally or hosted (e.g., Render, Supabase)
-
-Prisma Data Platform: Account for Prisma Accelerate
-
-Environment Variables: See .env.example
-
-⚙️ Setup
-
-Clone the Repository:
-
+# 🌊💰 WealthWave Backend
+
+WealthWave is a modern personal finance application powered by **NestJS, Prisma, and PostgreSQL**.  
+It enables users to track transactions, manage budgets, invest, pay bills, and participate in community challenges, with **Prisma Accelerate** ensuring top-notch performance. 🚀
+
+---
+
+## 📑 Table of Contents
+
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Prerequisites](#-prerequisites)
+- [Setup](#-setup)
+- [Prisma Configuration](#-prisma-configuration)
+- [Running the Application](#-running-the-application)
+- [Database Schema](#-database-schema)
+- [Prisma Accelerate](#-prisma-accelerate)
+- [API Endpoints](#-api-endpoints)
+- [Testing](#-testing)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## ✨ Features
+
+- 🔒 **Secure Authentication**: Register, login, confirm emails with JWT + 2FA support.
+- 💸 **Transaction Tracking**: Record expenses/income, sync with banks via Plaid.
+- 📊 **Budget Management**: Set and monitor monthly budgets by category.
+- 📈 **Investment Portfolio**: Track assets with real-time data (Alpha Vantage/CoinGecko).
+- 💳 **Bill Payments**: Process payments securely via Stripe.
+- 🌍 **Community Engagement**: Share posts and join savings challenges.
+- 🤖 **AI Analytics**: Insights into spending and investment patterns.
+- 🌱 **Sustainability Scores**: Track carbon footprints of transactions.
+- 🛡️ **Robust Security**: Audit logs and rate-limiting for sensitive actions.
+
+---
+
+## 🛠️ Tech Stack
+
+| Technology | Version | Purpose                        |
+| ---------- | ------- | ------------------------------ |
+| Node.js    | 18+     | Runtime environment            |
+| NestJS     | 10+     | Backend framework (TypeScript) |
+| Prisma     | 5+      | ORM with Accelerate            |
+| PostgreSQL | 13+     | Relational database            |
+| PNPM       | 8+      | Package manager                |
+| JWT/bcrypt | -       | Authentication & hashing       |
+| Plaid      | -       | Bank transaction sync          |
+| Stripe     | -       | Payment processing             |
+| Nodemailer | -       | Email notifications            |
+| Redis      | -       | Optional caching/leaderboards  |
+| MongoDB    | -       | Optional analytics logs        |
+
+---
+
+## 📋 Prerequisites
+
+- **Node.js**: v18+ → [Install](https://nodejs.org/)
+- **PNPM**: Install globally → `npm install -g pnpm`
+- **PostgreSQL**: v13+, running locally or hosted (Render, Supabase, etc.)
+- **Prisma Data Platform**: Account for Prisma Accelerate
+- **Environment Variables**: Configure `.env` (see below)
+
+---
+
+## ⚙️ Setup
+
+**Clone the Repository:**
+
+```bash
 git clone <repository-url>
 cd wealthwave-backend
-
 Install Dependencies:
 
+bash
+Copy code
 pnpm install
+Configure Environment Variables:
 
-Configure Environment Variables: Copy .env.example to .env and fill in:
-
-DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=**API_KEY**"
+env
+Copy code
+DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=__API_KEY__"
 DIRECT_DATABASE_URL="postgresql://user:password@host:port/db_name?schema=public"
 JWT_SECRET="your-jwt-secret"
 PLAID_CLIENT_ID="your-plaid-client-id"
@@ -155,322 +88,159 @@ PLAID_SECRET="your-plaid-secret"
 STRIPE_SECRET_KEY="your-stripe-secret-key"
 NODEMAILER_AUTH_USER="your-email"
 NODEMAILER_AUTH_PASS="your-email-password"
+Set Up Prisma:
 
-Set Up Prisma: Generate the Prisma Client and sync the schema:
-
+bash
+Copy code
 pnpm prisma
-
-This runs:
-
-prisma generate: Creates the client in ../generated/prisma.
-
-prisma db push: Applies the schema to PostgreSQL. Or run individually:
-
+# or individually
 pnpm prisma generate
 pnpm prisma db push
+Verify Database: Ensure PostgreSQL is accessible via DIRECT_DATABASE_URL.
 
-Verify Database: Ensure PostgreSQL is accessible via DIRECT_DATABASE_URL. The db push command creates tables and indexes.
+🗂️ Prisma Configuration
+Datasource:
 
-🗄️ Prisma Configuration
-
-The schema.prisma file defines the database structure with optimizations for performance and scalability.
-
-Datasource
-
+prisma
+Copy code
 datasource db {
-provider = "postgresql"
-url = env("DATABASE_URL") // Prisma Accelerate
-directUrl = env("DIRECT_DATABASE_URL") // Direct PostgreSQL
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Prisma Accelerate
+  directUrl = env("DIRECT_DATABASE_URL") // Direct PostgreSQL
 }
+Example Model:
 
-url: Routes queries through Accelerate for connection pooling/caching.
-
-directUrl: Used for migrations (prisma db push) and introspection (prisma db pull).
-
-Key Features
-
-Models: Define tables like User, Token, Transactions, etc.
-
+prisma
+Copy code
 model User {
-id String @id @default(cuid())
-email String @unique
-password String
-status UserStatus @default(PENDING)
-createdAt DateTime @default(now())
-@@index([email])
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  status    UserStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  @@index([email])
 }
+Token Model:
 
-Indexes (@@index):
-
-Optimize queries for fields like email, user_id, date.
-
-Example: @@index([email]) speeds up prisma.user.findUnique({ where: { email } }).
-
-Naming (@@map):
-
-Maps model/field names to database tables/columns (e.g., UserProfile @@map("users")).
-
-Not used currently, as names align (e.g., User → users).
-
-Enums: Constrain values (e.g., UserStatus: PENDING, ACTIVE).
-
-CUID: Compact, unique IDs via @default(cuid()).
-
-Prisma Client
-
-Generated in ../generated/prisma.
-
-Extended with @prisma/extension-accelerate for caching/pooling.
-
-📖 View Full Schema Example
-
+prisma
+Copy code
 model Token {
-id String @id @default(cuid())
-user_id String
-user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-token String
-type TokenType
-createdAt DateTime @default(now())
-expiresAt DateTime
-@@index([user_id])
-@@index([token])
+  id        String   @id @default(cuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token     String
+  type      TokenType
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  @@index([user_id])
+  @@index([token])
 }
-
-🏃‍♂️ Running the Application
-
+▶️ Running the Application
 Development Mode:
 
+bash
+Copy code
 pnpm start:dev
-
-Runs at http://localhost:3000 with hot-reload.
+Runs at: http://localhost:3000
 
 Production Build:
 
+bash
+Copy code
 pnpm build
 pnpm start:prod
+Browse Database:
 
-Explore Database:
-
+bash
+Copy code
 pnpm prisma studio
-
-Opens a web interface to browse data.
-
-📚 Database Schema
-
-The schema supports WealthWave’s features:
-
-Model
-
-Purpose
-
-Key Fields
-
-User
-
-User profiles
-
-email, password, status
-
-Token
-
-JWT refresh, confirmation tokens
-
-token, type, expiresAt
-
-Transactions
-
-Expense/income tracking
-
-user_id, amount, date
-
-Goals
-
-Financial goals
-
-target_amount, deadline
-
-Budget
-
-Monthly budgets
-
-category, limit_amount
-
-Investment
-
-Portfolio management
-
-symbol, purchase_price
-
-Payment
-
-Bill payments
-
-amount, stripe_payment_id
-
-CommunityPost
-
-Community engagement
-
-content, user_id
-
-Challenge
-
-Savings challenges
-
-name, start_date
-
-SustainabilityScore
-
-Carbon footprint tracking
-
-carbon_score, transaction_id
+🗄️ Database Schema
+Model	Purpose	Key Fields
+User	User profiles	email, password, status
+Token	JWT/confirmation	token, type, expiresAt
+Transactions	Expense/income logs	user_id, amount, date
+Goals	Financial goals	target_amount, deadline
 
 Optimizations:
 
-Indexes: @@index([user_id]) for fast user-specific queries.
+Indexes: @@index([user_id]) for queries.
 
-Relations: Foreign keys (e.g., user_id) with onDelete: Cascade.
-
-Schema Sync: pnpm prisma db push applies changes.
+Relations: Foreign keys with onDelete: Cascade.
 
 ⚡ Prisma Accelerate
+Installation:
 
-Prisma Accelerate provides connection pooling and global caching for serverless scalability.
-
-Setup
-
-Install Extension:
-
+bash
+Copy code
 pnpm add @prisma/extension-accelerate @prisma/client@latest
+Configuration:
 
-Configure Client:
-
+ts
+Copy code
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '../generated/prisma';
 import { withAccelerate } from '@prisma/extension-accelerate';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
-constructor() {
-super({ datasources: { db: { url: process.env.DATABASE_URL } } });
-this.$extends(withAccelerate());
+  constructor() {
+    super({ datasources: { db: { url: process.env.DATABASE_URL } } });
+    this.$extends(withAccelerate());
+  }
 }
-}
+Caching Example:
 
-Enable Accelerate:
-
-Sign up at prisma.io.
-
-Add DIRECT_DATABASE_URL and get DATABASE_URL from the Prisma Data Platform.
-
-Caching
-
-Cache read-heavy queries:
-
+ts
+Copy code
 await prisma.transactions.findMany({
-where: { user_id: userId },
-cacheStrategy: { ttl: 3600, swr: 500 }, // 1-hour cache
+  where: { user_id: userId },
+  cacheStrategy: { ttl: 3600, swr: 500 },
 });
-
-🌐 API Endpoints
-
-Endpoint
-
-Method
-
-Description
-
-Auth
-
-/auth/register
-
-POST
-
-Register user, send confirmation
-
-None
-
-/auth/confirm?token=<uuid>
-
-GET
-
-Confirm email, activate account
-
-None
-
-/auth/login
-
-POST
-
-Generate JWT
-
-None
-
-/auth/resend-confirmation
-
-POST
-
-Resend confirmation email
-
-None
-
-/transactions
-
-GET
-
-Fetch user transactions (cached)
-
-JWT
-
-/transactions/sync
-
-POST
-
-Sync bank transactions (Plaid)
-
-JWT
-
-/budgets?month=2025-09
-
-GET
-
-Fetch monthly budgets
-
-JWT
+📡 API Endpoints
+Endpoint	Method	Description	Auth
+/auth/register	POST	Register, send confirmation email	None
+/auth/confirm?token=...	GET	Confirm email, activate account	None
+/auth/login	POST	Generate JWT	None
+/transactions	GET	Fetch transactions (cached)	JWT
 
 Example:
 
+bash
+Copy code
 curl -X POST http://localhost:3000/auth/register \
- -H "Content-Type: application/json" \
- -d '{"email":"test@example.com","password":"pass123","name":"Test"}'
-
+  -d '{"email":"test@example.com","password":"pass123","name":"Test"}'
 🧪 Testing
-
 Unit Tests:
 
+bash
+Copy code
 pnpm test
+Database Query Example:
 
-Database Queries: Verify @@index usage:
-
-EXPLAIN SELECT \* FROM transactions WHERE user_id = 'uuid';
-
-Performance: Monitor cache hits in the Prisma Data Platform dashboard.
-
+sql
+Copy code
+EXPLAIN SELECT * FROM transactions WHERE user_id = 'uuid';
 🤝 Contributing
+Fork & create branch:
 
-Fork the repo.
+bash
+Copy code
+git checkout -b feature/your-feature
+Commit:
 
-Create a branch: git checkout -b feature/your-feature.
+bash
+Copy code
+git commit -m "Add feature"
+Push:
 
-Commit: git commit -m "Add feature".
-
-Push: git push origin feature/your-feature.
-
-Open a pull request.
+bash
+Copy code
+git push origin feature/your-feature
+Open a pull request 🎉
 
 📜 License
-
 MIT License. See LICENSE.
 
-🌟 Join the WealthWave revolution!
-File issues or suggest features on GitHub. Let’s make finance fun and accessible! 💸🚀
+🌟 Build the future of finance with WealthWave!
+Join us on GitHub to contribute or report issues. Let’s make money management awesome 💸🚀
+```
