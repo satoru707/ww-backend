@@ -12,3 +12,12 @@ export class CreateAuthDto {
   @IsString()
   name: string;
 }
+
+export class LoginDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+}

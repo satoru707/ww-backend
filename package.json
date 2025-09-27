@@ -35,10 +35,13 @@
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "crypto": "^1.0.1",
+    "google-auth-library": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.6",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -49,6 +52,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^7.0.1",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
