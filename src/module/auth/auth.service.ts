@@ -211,7 +211,7 @@ export class AuthService {
   }
 
   async set_token(
-    user: { name: string; email: string; id: string },
+    user: { name: string; email: string; id: string; role: string },
     res: Response,
   ) {
     try {
@@ -243,7 +243,7 @@ export class AuthService {
       }
 
       const jwt_token = sign(
-        { sub: user.id, email: user.email },
+        { sub: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '1h' },
       );
@@ -302,7 +302,7 @@ async function send_mail(
             <a href="https://your-api.com/api/auth/verify?token=${nonce}" class="button">Verify Email</a>
           </p>
           <p>If the button doesn't work, copy and paste this link into your browser:</p>
-          <p><a href="https://your-api.com/api/auth/verify?token=${nonce}">https://your-api.com/api/auth/verify?token=${nonce}</a></p>
+          <p><a href="${process.env.CLIENT_URL}/api/auth/verify?token=${nonce}">${process.env.CLIENT_URL}/api/auth/verify?token=${nonce}</a></p>
           <p>This link expires in 24 hours.</p>
         </div>
         <div class="footer">
@@ -343,7 +343,7 @@ async function send_mail(
             <a href="https://your-app.com/reset-password?token=${nonce}" class="button">Reset Password</a>
           </p>
           <p>If the button doesn't work, copy and paste this link into your browser:</p>
-          <p><a href="https://your-app.com/reset-password?token=${nonce}">https://your-app.com/reset-password?token=${nonce}</a></p>
+          <p><a href="${process.env.CLIENT_URL}/reset-password?token=${nonce}">${process.env.CLIENT_URL}/reset-password?token=${nonce}</a></p>
           <p>This link expires in 24 hours. If you didn’t request a password reset, please ignore this email or contact support.</p>
         </div>
         <div class="footer">
