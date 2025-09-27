@@ -17,6 +17,7 @@ model User {
   status UserStatus @default(PENDING)
   role UserRole @default(USER)
   two_factor_secret String?
+  is2FAEnabled Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tokens Token[]
@@ -43,6 +44,7 @@ model Token {
   createdAt DateTime @default(now())
   expiresAt DateTime
   @@index([user_id])
+  @@index([token])
 }
 
 model Goals {

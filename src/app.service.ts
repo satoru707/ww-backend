@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { createSuccessResponse } from './common/response.util';
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  getHealth() {
+    return createSuccessResponse('Server is active');
   }
 }
