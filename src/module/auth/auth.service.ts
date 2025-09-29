@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import crypto from 'crypto';
+import crypto, { verify } from 'crypto';
 import { CreateAuthDto, LoginDto } from './dto/create-auth.dto';
 import { PrismaService } from 'src/prisma.service';
 import { Response } from 'express';
@@ -35,7 +35,9 @@ export class AuthService {
         },
       });
       const nonce = crypto.randomBytes(32).toString('hex');
-      await send_mail(user, nonce);
+      const sent = await send_mail(user, nonce);
+      if (sent.errors)
+        return createErrorResponse([{ message: sent.errors[0].message }]);
       await this.prisma.token.create({
         data: {
           user_id: user.id,
@@ -59,14 +61,19 @@ export class AuthService {
       });
       if (!userExists)
         return createErrorResponse([{ message: 'User does not exist' }]);
-      const pass = bcrypt.compare(checkAuthDto.password, userExists.password);
+      const pass = await bcrypt.compare(
+        checkAuthDto.password,
+        userExists.password,
+      );
       if (!pass)
         return createErrorResponse([
           { message: 'Invalid Credentials or Login method' },
         ]);
       if (userExists.status == 'PENDING') {
-        // resend a verification mail
-        await send_mail(userExists, userExists.tokens[0].token);
+        const sent = await send_mail(userExists, userExists.tokens[0].token);
+        if (sent.errors)
+          return createErrorResponse([{ message: sent.errors[0].message }]);
+
         return createErrorResponse([{ message: 'Verify email' }]);
       }
 
@@ -76,6 +83,27 @@ export class AuthService {
     } catch (error) {
       console.error(error);
       return createErrorResponse([{ message: 'Error logging in' }]);
+    }
+  }
+
+  async verify_email(nonce: string) {
+    try {
+      const token_exists = await this.prisma.token.findFirst({
+        where: { token: nonce },
+      });
+      if (!token_exists)
+        return createErrorResponse([{ message: 'Invalid email link' }]);
+      if (new Date(token_exists.expiresAt) > new Date())
+        return createErrorResponse([{ message: 'Token Expired' }]);
+      await this.prisma.token.delete({
+        where: {
+          id: token_exists.id,
+        },
+      });
+      return createSuccessResponse(token_exists.type);
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Invalid email link' }]);
     }
   }
 
@@ -188,6 +216,30 @@ export class AuthService {
     }
   }
 
+  async request_reset(email: string) {
+    try {
+      const user = await this.prisma.user.findFirst({
+        where: { email: email },
+      });
+      if (!user)
+        return createErrorResponse([{ message: 'User does not exist' }]);
+      const nonce = crypto.randomBytes(32).toString('hex');
+      await this.prisma.token.create({
+        data: {
+          token: nonce,
+          type: 'CONFIRMATION',
+          user_id: user.id,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+      await send_mail(user, nonce);
+      return createSuccessResponse('Email sent');
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Error requesting reset' }]);
+    }
+  }
+
   async reset_password(resetDto: LoginDto) {
     try {
       const user = await this.prisma.user.findFirst({
@@ -201,6 +253,7 @@ export class AuthService {
         },
         data: {
           password: resetDto.password,
+          updatedAt: new Date(),
         },
       });
       return createSuccessResponse('Password reset successfull');
@@ -241,7 +294,8 @@ export class AuthService {
           },
         });
       }
-
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt_token = sign(
         { sub: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,

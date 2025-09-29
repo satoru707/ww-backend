@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Res, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto, LoginDto } from './dto/create-auth.dto';
 
@@ -22,6 +22,13 @@ export class AuthController {
     return this.authService.google(body.code, res);
   }
 
+  // for confirmation email just click link
+  // for reset.first confirm if can reset before showing ui
+  @Get('verify_email')
+  confirm(@Param() param: { nonce: string }) {
+    return this.authService.verify_email(param.nonce);
+  }
+
   @Get('refresh')
   refresh(@Res({ passthrough: true }) res) {
     return this.authService.refresh(res);
@@ -30,6 +37,11 @@ export class AuthController {
   @Post('verify_2fa')
   auth(@Body() body: { user_email: string }, @Res({ passthrough: true }) res) {
     return this.authService.verify_2fa(body.user_email, res);
+  }
+
+  @Post('request_reset')
+  request(@Body() body: { email: string }) {
+    return this.authService.request_reset(body.email);
   }
 
   @Post('reset_password')

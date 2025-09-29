@@ -1,23 +1,27 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { PrismaService } from 'src/prisma.service';
 import { verify } from 'jsonwebtoken';
+import { Reflector } from '@nestjs/core';
+import { Roles } from './role.decorator';
+import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private prisma: PrismaService) {}
+  constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
+      const roles = this.reflector.get(Roles, context.getHandler());
       const req = context.switchToHttp().getRequest();
       const token = req.cookies['access_token'];
-      if (!token) return false;
-      const payload = verify(token, process.env.JWT_SECRET);
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
-      if (!user) return false;
-      // dynamic roles
-      return true;
+      if (!process.env.JWT_SECRET) return false;
+      const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
+      console.log('Payload', payload, roles);
+
+      return roles.filter(
+        (role) => role.toLowerCase() == payload.role.toLowerCase(),
+      ).length > 0
+        ? true
+        : false;
     } catch (error) {
       console.error(error);
       return false;

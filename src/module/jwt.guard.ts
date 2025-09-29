@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { verify } from 'jsonwebtoken';
+import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -10,9 +11,10 @@ export class AuthGuard implements CanActivate {
     const token = req.cookies['access_token'];
     try {
       if (!token) return false;
-      const payload = verify(token, process.env.JWT_SECRET);
+      if (!process.env.JWT_SECRET) return false;
+      const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { id: payload.sub, status: 'ACTIVE' },
         select: { role: true },
       });
       if (!user) return false;
