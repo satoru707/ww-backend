@@ -18,6 +18,7 @@ import nodemailer from 'nodemailer';
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService) {}
+
   async create(createAuthDto: CreateAuthDto) {
     try {
       const hashed = await bcrypt.hash(createAuthDto.password, 10);
@@ -35,7 +36,7 @@ export class AuthService {
         },
       });
       const nonce = crypto.randomBytes(32).toString('hex');
-      const sent = await send_mail(user, nonce);
+      const sent = await this.send_mail(user, nonce);
       if (sent.errors)
         return createErrorResponse([{ message: sent.errors[0].message }]);
       await this.prisma.token.create({
@@ -70,7 +71,10 @@ export class AuthService {
           { message: 'Invalid Credentials or Login method' },
         ]);
       if (userExists.status == 'PENDING') {
-        const sent = await send_mail(userExists, userExists.tokens[0].token);
+        const sent = await this.send_mail(
+          userExists,
+          userExists.tokens[0].token,
+        );
         if (sent.errors)
           return createErrorResponse([{ message: sent.errors[0].message }]);
 
@@ -116,7 +120,7 @@ export class AuthService {
         where: { token: refresh },
         include: { user: true },
       });
-      if (!valid_token)
+      if (!valid_token || valid_token.user == null)
         return createErrorResponse([{ message: 'Invalid or Expired token' }]);
       if (valid_token.expiresAt < new Date())
         return createErrorResponse([{ message: 'Invalid or Expired token' }]);
@@ -232,7 +236,7 @@ export class AuthService {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       });
-      await send_mail(user, nonce);
+      await this.send_mail(user, nonce);
       return createSuccessResponse('Email sent');
     } catch (error) {
       console.error(error);
@@ -317,17 +321,16 @@ export class AuthService {
       console.error(error);
     }
   }
-}
 
-async function send_mail(
-  user: { email: string; name: string; status: string },
-  nonce: string,
-) {
-  try {
-    let mail, title;
-    if (user.status == 'PENDING') {
-      title = `Welcome to WealthWave, ${user.name}! Verify Your Email`;
-      mail = `
+  async send_mail(
+    user: { email: string; name: string; status: string; family_name?: string },
+    nonce: string,
+  ) {
+    try {
+      let mail, title;
+      if (user.status == 'PENDING') {
+        title = `Welcome to WealthWave, ${user.name}! Verify Your Email`;
+        mail = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -366,9 +369,12 @@ async function send_mail(
     </body>
     </html>
   `;
-    } else {
-      title = `Password Reset Request for WealthWave, ${user.name}`;
-      mail = `
+      } else if (user.status == 'FAMILY') {
+        title = '';
+        mail = '';
+      } else {
+        title = `Password Reset Request for WealthWave, ${user.name}`;
+        mail = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -407,26 +413,28 @@ async function send_mail(
     </body>
     </html>
   `;
+      }
+
+      let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      let mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: title,
+        html: mail,
+      };
+      await transporter.sendMail(mailOptions);
+      return createSuccessResponse('Email sent successfully');
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Error sending mail' }]);
     }
-
-    let transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    let mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: title,
-      html: mail,
-    };
-    await transporter.sendMail(mailOptions);
-    return createSuccessResponse('Email sent successfully');
-  } catch (error) {
-    console.error(error);
-    return createErrorResponse([{ message: 'Error sending mail' }]);
   }
 }
+

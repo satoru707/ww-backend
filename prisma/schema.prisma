@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
   output   = "./generated/prisma"
@@ -21,39 +20,52 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tokens Token[]
-  // family Family[]
   goals Goals[]
+  family_as_admin Family? @relation("Family_Admin")
+  family Family? @relation("Family_Member", fields: [familyId], references: [id], onDelete: SetNull)
+  familyId String?
   transactions Transactions[]
   budgets Budget[]
   investments Investment[]
   payments Payment[]
   debt_plans DebtPlan[]
-  community_posts CommunityPost[]
-  challenge_participants ChallengeParticipant[]
   notifications Notification[]
   audit_logs AuditLog[]
-  sustainability_scores SustainabilityScore[]
   @@index([email])
 }
 
+model Family {
+  id        String    @id @default(cuid())
+  name      String
+  admin_id  String
+  admin     User   @relation("Family_Admin", fields: [admin_id], references: [id])
+  members   User[]  @relation("Family_Member")
+  budgets   Budget[]
+  tokens    Token[]
+  transactions Transactions[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([name])
+  @@index([admin_id])
+
+  @@unique([admin_id])
+}
+
 model Token {
-  id String @id @default(cuid()) 
-  user_id String
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  user_id String?
+  user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
   token String
   type TokenType
+  family_id String? 
+  member_id String?
+  family Family? @relation(fields: [family_id], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   expiresAt DateTime
   @@index([user_id])
   @@index([token])
   @@unique([user_id, type, token])
 }
-
-// model Family {
-//   id String @id @default(cuid())
-//   user_id
- 
-// }
 
 model Goals {
   id String @id @default(cuid())
@@ -71,6 +83,8 @@ model Transactions {
   id String @id @default(cuid())
   user_id String
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  family Family? @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  familyId String?
   amount Decimal @db.Decimal(15, 2)
   category String
   description String?
@@ -78,20 +92,23 @@ model Transactions {
   is_recurring Boolean @default(false)
   source String @default("manual")
   createdAt DateTime @default(now())
-  sustainability_scores SustainabilityScore[]
   @@index([user_id])
   @@index([date])
+  @@index([familyId])
 }
 
 model Budget {
   id String @id @default(cuid())
-  user_id String
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id String?
+  user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  family Family? @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  familyId String?
   category String
   limit_amount Decimal @db.Decimal(15, 2)
   month DateTime
   createdAt DateTime @default(now())
   @@index([user_id])
+  @@index([familyId])
 }
 
 model Investment {
@@ -130,36 +147,6 @@ model DebtPlan {
   @@index([user_id])
 }
 
-model CommunityPost {
-  id String @id @default(cuid())
-  user_id String?
-  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  content String
-  createdAt DateTime @default(now())
-  @@index([user_id])
-}
-
-model Challenge {
-  id String @id @default(cuid())
-  name String
-  description String?
-  start_date DateTime
-  end_date DateTime
-  createdAt DateTime @default(now())
-  challenge_participants ChallengeParticipant[]
-}
-
-model ChallengeParticipant {
-  id String @id @default(cuid())
-  user_id String
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  challenge_id String
-  challenge Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
-  progress Decimal @db.Decimal(15, 2) @default(0)
-  createdAt DateTime @default(now())
-  @@index([user_id])
-  @@index([challenge_id])
-}
 
 model Notification {
   id String @id @default(cuid())
@@ -181,18 +168,6 @@ model AuditLog {
   @@index([user_id])
 }
 
-model SustainabilityScore {
-  id String @id @default(cuid())
-  user_id String
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  transaction_id String
-  transaction Transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
-  carbon_score Decimal @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  @@index([user_id])
-  @@index([transaction_id])
-}
-
 enum UserStatus {
   PENDING
   ACTIVE
@@ -207,6 +182,7 @@ enum UserRole {
 enum TokenType {
   REFRESH
   CONFIRMATION
+  FAMILY
 }
 
 enum PaymentStatus {

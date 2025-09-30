@@ -33,10 +33,7 @@ export class UserService {
           investments: true,
           payments: true,
           debt_plans: true,
-          community_posts: true,
-          challenge_participants: true,
           notifications: true,
-          sustainability_scores: true,
         },
       });
       return createSuccessResponse(user);
@@ -90,8 +87,27 @@ export class UserService {
     return `This action returns a #${id} user`;
   }
 
-  remove(id: string) {
+  async remove(id: string, res: Response) {
     try {
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      const user = verify(
+        res.cookie['access_token'],
+        process.env.JWT_SECRET,
+      ) as jwtPayload;
+      if (
+        !(
+          (user.sub == id && user.role == 'FAMILY_ADMIN') ||
+          user.role == 'USER'
+        ) &&
+        user.sub !== id &&
+        user.role == 'ADMIN'
+      )
+        return createErrorResponse([{ message: 'Insufficient Perminssion' }]);
+      await this.prisma.user.delete({
+        where: { id: id },
+      });
+
       return createSuccessResponse('User deleted');
     } catch (error) {
       console.error(error);

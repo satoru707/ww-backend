@@ -39,9 +39,9 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Roles(['admin', 'user'])
+  @Roles(['admin', 'user', 'family_admin'])
   @Delete(':id')
-  remove(@Param('id') params: { id: string }) {
-    return this.userService.remove(params.id);
+  remove(@Param('id') params: { id: string }, @Res({passthrough: true}) res) {
+    return this.userService.remove(params.id, res);
   }
 }
