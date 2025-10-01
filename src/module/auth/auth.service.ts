@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import crypto, { verify } from 'crypto';
+import crypto from 'crypto';
 import { CreateAuthDto, LoginDto } from './dto/create-auth.dto';
 import { PrismaService } from 'src/prisma.service';
 import { Response } from 'express';
@@ -99,12 +99,18 @@ export class AuthService {
         return createErrorResponse([{ message: 'Invalid email link' }]);
       if (new Date(token_exists.expiresAt) > new Date())
         return createErrorResponse([{ message: 'Token Expired' }]);
+      if (token_exists.user_id) {
+        await this.prisma.user.update({
+          where: { id: token_exists.user_id },
+          data: { status: 'ACTIVE' },
+        });
+      }
       await this.prisma.token.delete({
         where: {
           id: token_exists.id,
         },
       });
-      return createSuccessResponse(token_exists.type);
+      return createSuccessResponse('Email verified');
     } catch (error) {
       console.error(error);
       return createErrorResponse([{ message: 'Invalid email link' }]);
