@@ -9,6 +9,7 @@ import { FamilyModule } from './module/family/family.module';
 import { GoalModule } from './module/goal/goal.module';
 import { TransactionsModule } from './module/transactions/transactions.module';
 import { BudgetModule } from './module/budget/budget.module';
+import { InvestmentModule } from './module/investment/investment.module';
 
 // nest g resource <name>
 @Module({
@@ -20,6 +21,7 @@ import { BudgetModule } from './module/budget/budget.module';
     GoalModule,
     TransactionsModule,
     BudgetModule,
+    InvestmentModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
