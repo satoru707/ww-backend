@@ -112,4 +112,46 @@ export class UserService {
       return createErrorResponse([{ message: 'Error deleting user' }]);
     }
   }
+
+  async exportUserData(res: Response) {
+    try {
+      const jwt = await res.cookie['access_token'];
+      if (!process.env.JWT_SECERT)
+        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;
+      const user = await this.prisma.user.findFirst({
+        where: {
+          id: token.sub,
+          email: token.email,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          tokens: true,
+          goals: true,
+          transactions: true,
+          budgets: true,
+          investments: true,
+          payments: true,
+          debt_plans: true,
+          notifications: true,
+        },
+      });
+      if (!user) return createErrorResponse([{ message: 'User not found' }]);
+
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=${user.email}_data.json`,
+      );
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify(user, null, 2));
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Error exporting user data' }]);
+    }
+  }
 }

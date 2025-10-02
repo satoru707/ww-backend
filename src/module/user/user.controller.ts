@@ -13,9 +13,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 
-// Get user info,edit user, delete user,get al users, search for users I guess
 @Controller('user')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -41,7 +40,13 @@ export class UserController {
 
   @Roles(['admin', 'user', 'family_admin'])
   @Delete(':id')
-  remove(@Param('id') params: { id: string }, @Res({passthrough: true}) res) {
+  remove(@Param('id') params: { id: string }, @Res({ passthrough: true }) res) {
     return this.userService.remove(params.id, res);
+  }
+
+  @Roles(['user', 'family_admin'])
+  @Get('export')
+  exportUserData(@Res() res) {
+    return this.userService.exportUserData(res);
   }
 }

@@ -16,7 +16,7 @@ import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 
 @Controller('goal')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class GoalController {
   constructor(private readonly goalService: GoalService) {}
 

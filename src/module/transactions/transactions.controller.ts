@@ -14,9 +14,8 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 
-// create, get all, get one, delete, create family, get families
 @Controller('transactions')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
   @Roles(['user', 'family_admin'])

@@ -16,7 +16,7 @@ import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 
 // create , get all, get one, edit investment, delete
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('investment')
 export class InvestmentController {
   constructor(private readonly investmentService: InvestmentService) {}

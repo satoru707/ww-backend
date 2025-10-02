@@ -14,7 +14,7 @@ import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 
 @Controller('family')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class FamilyController {
   constructor(private readonly familyService: FamilyService) {}
 

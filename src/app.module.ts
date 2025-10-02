@@ -10,6 +10,10 @@ import { GoalModule } from './module/goal/goal.module';
 import { TransactionsModule } from './module/transactions/transactions.module';
 import { BudgetModule } from './module/budget/budget.module';
 import { InvestmentModule } from './module/investment/investment.module';
+import { PaymentModule } from './module/payment/payment.module';
+import { AuditLogModule } from './module/audit_log/audit_log.module';
+import { NotificationModule } from './module/notification/notification.module';
+import { deptplanModule } from './module/debtplan/debit_plan.module';
 
 // nest g resource <name>
 @Module({
@@ -22,6 +26,10 @@ import { InvestmentModule } from './module/investment/investment.module';
     TransactionsModule,
     BudgetModule,
     InvestmentModule,
+    PaymentModule,
+    deptplanModule,
+    NotificationModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
