@@ -22,22 +22,22 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  findAll(@Response() res) {
+  findAll(@Response({ passthrough: true }) res) {
     return this.notificationService.findAll(res);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Response() res) {
+  findOne(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.notificationService.findOne(id, res);
   }
 
   @Delete(':id')
-  update(@Param('id') id: string, @Response() res) {
+  update(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.notificationService.delete(id, res);
   }
 
   @Delete('all')
-  deleteAll(@Response() res) {
+  deleteAll(@Response({ passthrough: true }) res) {
     return this.notificationService.deleteAll(res);
   }
 }

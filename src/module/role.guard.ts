@@ -15,13 +15,8 @@ export class RolesGuard implements CanActivate {
       const token = req.cookies.access_token;
       if (!process.env.JWT_SECRET) return false;
       const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
-      console.log('Guard Error');
-      console.log(roles, payload.role);
       for (const role of roles) {
-        console.log(role.toLowerCase(), payload.role.toLowerCase());
         if (role.toLowerCase() == payload.role.toLowerCase()) {
-          console.log('Get in joor');
-
           return true;
         }
       }

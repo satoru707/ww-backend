@@ -32,20 +32,23 @@ export class GoalController {
 
   @Roles(['user', 'family_admin'])
   @Get('')
-  findAll(@Response() res) {
+  findAll(@Response({ passthrough: true }) res) {
     return this.goalService.findAll(res);
   }
 
   @Roles(['user', 'family_admin'])
   @Get(':goalId')
-  findOne(@Param() param: { goalId: string }, @Response() res) {
+  findOne(
+    @Param() param: { goalId: string },
+    @Response({ passthrough: true }) res,
+  ) {
     return this.goalService.findOne(param.goalId, res);
   }
 
   @Roles(['user', 'family_admin'])
   @Patch(':goalId')
   update(
-    @Response() res,
+    @Response({ passthrough: true }) res,
     @Param() param: { goalId: string },
     @Body() updateGoalDto: UpdateGoalDto,
   ) {
@@ -54,7 +57,10 @@ export class GoalController {
 
   @Roles(['user', 'family_admin'])
   @Delete(':goalId')
-  remove(@Response() res, @Param() param: { goalId: string }) {
+  remove(
+    @Response({ passthrough: true }) res,
+    @Param() param: { goalId: string },
+  ) {
     return this.goalService.remove(param.goalId, res);
   }
 }

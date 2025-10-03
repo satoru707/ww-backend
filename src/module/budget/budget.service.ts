@@ -21,12 +21,9 @@ export class BudgetService {
         res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
-      console.log(jwt);
       const budget = await this.prisma.budget.create({
         data: { ...createBudget, user_id: jwt.sub },
       });
-      console.log('Created budget', budget);
-      
       return createSuccessResponse(budget);
     } catch (error) {
       console.error(error);

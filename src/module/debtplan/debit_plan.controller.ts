@@ -24,17 +24,20 @@ export class deptplanController {
 
   @Roles(['users', 'family_admin'])
   @Post()
-  create(@Body() createdeptplanDto: CreatedeptplanDto, @Response() res) {
+  create(
+    @Body() createdeptplanDto: CreatedeptplanDto,
+    @Response({ passthrough: true }) res,
+  ) {
     return this.deptplanService.create(createdeptplanDto, res);
   }
   @Roles(['users', 'family_admin'])
   @Get()
-  findAll(@Response() res) {
+  findAll(@Response({ passthrough: true }) res) {
     return this.deptplanService.findAll(res);
   }
   @Roles(['users', 'family_admin'])
   @Get(':id')
-  findOne(@Param('id') id: string, @Response() res) {
+  findOne(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.deptplanService.findOne(id, res);
   }
   @Roles(['users', 'family_admin'])
@@ -42,14 +45,14 @@ export class deptplanController {
   update(
     @Param('id') id: string,
     @Body() updatedeptplan: UpdatedeptplanDto,
-    @Response() res,
+    @Response({ passthrough: true }) res,
   ) {
     return this.deptplanService.update(id, updatedeptplan, res);
   }
 
   @Roles(['users', 'family_admin'])
   @Delete(':id')
-  remove(@Param('id') id: string, @Response() res) {
+  remove(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.deptplanService.remove(id, res);
   }
 }

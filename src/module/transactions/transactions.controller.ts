@@ -21,37 +21,46 @@ export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
   @Roles(['user', 'family_admin'])
   @Post()
-  create(@Body() createTransaction: CreateTransactionDto, @Response() res) {
+  create(
+    @Body() createTransaction: CreateTransactionDto,
+    @Response({ passthrough: true }) res,
+  ) {
     return this.transactionsService.create(createTransaction, res);
   }
 
   @Roles(['user', 'family_admin'])
   @Get()
-  findAll(@Response() res) {
+  findAll(@Response({ passthrough: true }) res) {
     return this.transactionsService.findAll(res);
   }
 
   @Roles(['user', 'family_admin'])
   @Get(':id')
-  findOne(@Param() param: { id: string }, @Response() res) {
+  findOne(
+    @Param() param: { id: string },
+    @Response({ passthrough: true }) res,
+  ) {
     return this.transactionsService.findOne(param.id, res);
   }
 
   @Roles(['user', 'family_admin'])
   @Delete(':id')
-  delete(@Param() param: { id: string }, @Response() res) {
+  delete(@Param() param: { id: string }, @Response({ passthrough: true }) res) {
     return this.transactionsService.remove(param.id, res);
   }
 
   @Roles(['family_admin', 'user'])
   @Get('family')
-  findAllFam(@Response() res) {
+  findAllFam(@Response({ passthrough: true }) res) {
     return this.transactionsService.findFamTransaction(res);
   }
 
   @Roles(['family_admin'])
   @Post('family')
-  createFam(@Response() res, @Body() body: CreateTransactionDto) {
+  createFam(
+    @Response({ passthrough: true }) res,
+    @Body() body: CreateTransactionDto,
+  ) {
     return this.transactionsService.createFamily(res, body);
   }
 }

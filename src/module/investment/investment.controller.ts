@@ -25,19 +25,22 @@ export class InvestmentController {
 
   @Roles(['user', 'family_admin'])
   @Post()
-  create(@Body() createInvestmentDto: CreateInvestmentDto, @Response() res) {
+  create(
+    @Body() createInvestmentDto: CreateInvestmentDto,
+    @Response({ passthrough: true }) res,
+  ) {
     return this.investmentService.create(createInvestmentDto, res);
   }
 
   @Roles(['user', 'family_admin'])
   @Get()
-  findAll(@Response() res) {
+  findAll(@Response({ passthrough: true }) res) {
     return this.investmentService.findAll(res);
   }
 
   @Roles(['user', 'family_admin'])
   @Get(':id')
-  findOne(@Param('id') id: string, @Response() res) {
+  findOne(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.investmentService.findOne(id, res);
   }
 
@@ -46,14 +49,14 @@ export class InvestmentController {
   update(
     @Param('id') id: string,
     @Body() updateInvestmentDto: UpdateInvestmentDto,
-    @Response() res,
+    @Response({ passthrough: true }) res,
   ) {
     return this.investmentService.update(id, updateInvestmentDto, res);
   }
 
   @Roles(['user', 'family_admin'])
   @Delete(':id')
-  remove(@Param('id') id: string, @Response() res) {
+  remove(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.investmentService.remove(id, res);
   }
 }
