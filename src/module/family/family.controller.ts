@@ -12,6 +12,7 @@ import {
 import { FamilyService } from './family.service';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
 
 @Controller('family')
 @UseGuards(AuthGuard, RolesGuard)

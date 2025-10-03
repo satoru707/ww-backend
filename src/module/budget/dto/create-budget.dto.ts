@@ -1,4 +1,4 @@
-import { IsString, IsDecimal, IsDate } from 'class-validator';
+import { IsString, IsDecimal, IsDate, IsNumber } from 'class-validator';
 
 export class CreateBudgetDto {
   @IsString()
@@ -10,9 +10,10 @@ export class CreateBudgetDto {
   @IsString()
   category: string;
 
-  @IsDecimal()
+  @IsNumber()
   limit_amount: number;
 
-  @IsDate()
-  month: string;
+  //@IsDate()
+  @IsString()
+  month: Date;
 }

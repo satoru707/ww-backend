@@ -21,7 +21,7 @@ export class FamilyService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const family = await this.prisma.family.create({
@@ -72,7 +72,7 @@ export class FamilyService {
       const data = await this.prisma.token.findFirst({
         where: { token: nonce },
       });
-      if (!data || new Date(data.expiresAt) > new Date())
+      if (!data || data.expiresAt > new Date())
         return createErrorResponse([{ message: 'Invalid token' }]);
       if (data.member_id) {
         await this.prisma.user.update({
@@ -107,7 +107,7 @@ export class FamilyService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       await this.prisma.user.update({

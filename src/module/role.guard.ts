@@ -12,16 +12,21 @@ export class RolesGuard implements CanActivate {
     try {
       const roles = this.reflector.get(Roles, context.getHandler());
       const req = context.switchToHttp().getRequest();
-      const token = req.cookies['access_token'];
+      const token = req.cookies.access_token;
       if (!process.env.JWT_SECRET) return false;
       const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
-      console.log('Payload', payload, roles);
+      console.log('Guard Error');
+      console.log(roles, payload.role);
+      for (const role of roles) {
+        console.log(role.toLowerCase(), payload.role.toLowerCase());
+        if (role.toLowerCase() == payload.role.toLowerCase()) {
+          console.log('Get in joor');
 
-      return roles.filter(
-        (role) => role.toLowerCase() == payload.role.toLowerCase(),
-      ).length > 0
-        ? true
-        : false;
+          return true;
+        }
+      }
+console.log('error');
+return false;
     } catch (error) {
       console.error(error);
       return false;

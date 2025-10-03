@@ -12,6 +12,8 @@ import {
 import { NotificationService } from './notification.service';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
+
 
 @UseGuards(AuthGuard, RolesGuard)
 @Roles(['user', 'family_admin'])

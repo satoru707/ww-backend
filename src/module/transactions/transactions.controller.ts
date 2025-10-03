@@ -13,6 +13,7 @@ import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
 
 @Controller('transactions')
 @UseGuards(AuthGuard, RolesGuard)

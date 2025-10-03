@@ -8,7 +8,7 @@ export class AuthGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    const token = req.cookies['access_token'];
+    const token = req.cookies.access_token;
     try {
       if (!token) return false;
       if (!process.env.JWT_SECRET) return false;

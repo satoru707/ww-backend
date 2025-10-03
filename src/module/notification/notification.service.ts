@@ -18,7 +18,7 @@ export class NotificationService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
 
@@ -36,7 +36,7 @@ export class NotificationService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const notifications = await this.prisma.notification.findMany({
@@ -58,7 +58,7 @@ export class NotificationService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const notification = await this.prisma.notification.findFirst({
@@ -81,7 +81,7 @@ export class NotificationService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const notification = await this.prisma.notification.findFirst({
@@ -110,7 +110,7 @@ export class NotificationService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       await this.prisma.notification.deleteMany({

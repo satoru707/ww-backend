@@ -6,7 +6,7 @@ import { AuthGuard } from '../jwt.guard';
 import { RolesGuard } from '../role.guard';
 
 @Module({
-  controllers: [BudgetController, PrismaService, AuthGuard, RolesGuard],
-  providers: [BudgetService],
+  controllers: [BudgetController],
+  providers: [BudgetService, PrismaService, AuthGuard, RolesGuard],
 })
 export class BudgetModule {}

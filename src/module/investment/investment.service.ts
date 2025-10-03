@@ -19,7 +19,7 @@ export class InvestmentService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
 
@@ -38,7 +38,7 @@ export class InvestmentService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const investments = await this.prisma.investment.findMany({
@@ -58,7 +58,7 @@ export class InvestmentService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const investment = await this.prisma.investment.findFirst({
@@ -82,7 +82,7 @@ export class InvestmentService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({
@@ -107,7 +107,7 @@ export class InvestmentService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({

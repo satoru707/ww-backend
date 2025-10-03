@@ -4,9 +4,10 @@ import { UserController } from './user.controller';
 import { PrismaService } from 'src/prisma.service';
 import { AuthGuard } from '../jwt.guard';
 import { RolesGuard } from '../role.guard';
+import { AuthService } from '../auth/auth.service';
 
 @Module({
   controllers: [UserController],
-  providers: [UserService, PrismaService, AuthGuard, RolesGuard],
+  providers: [UserService, PrismaService, AuthGuard, RolesGuard, AuthService],
 })
 export class UserModule {}

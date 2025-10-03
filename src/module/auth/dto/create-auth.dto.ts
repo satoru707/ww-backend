@@ -1,6 +1,5 @@
 import { IsString, IsEmail, MinLength } from 'class-validator';
 
-// dto is for inputs
 export class CreateAuthDto {
   @IsEmail()
   email: string;
@@ -14,8 +13,11 @@ export class CreateAuthDto {
 }
 
 export class LoginDto {
+  @IsString()
+  nonce?: string;
+
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsString()
   @MinLength(8)

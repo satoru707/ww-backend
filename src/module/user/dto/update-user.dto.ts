@@ -1,10 +1,4 @@
-import { IsBoolean, IsString, IsEnum } from 'class-validator';
-
-enum roleProps {
-  USER,
-  ADMIN,
-  FAMILY_ADMIN,
-}
+import { IsBoolean, IsString } from 'class-validator';
 
 export class UpdateUserDto {
   @IsString()
@@ -13,6 +7,6 @@ export class UpdateUserDto {
   @IsBoolean()
   is2FAEnabled?: boolean;
 
-  @IsEnum(roleProps)
-  role?: roleProps;
+  @IsString()
+  role?: 'user' | 'admin' | 'family_admin';
 }

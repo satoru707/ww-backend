@@ -14,6 +14,7 @@ import { CreatedeptplanDto } from './dto/create-debit_plan.dto';
 import { UpdatedeptplanDto } from './dto/update-debit_plan.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
 
 // create, get all,get one, edit plan, delete plan
 @UseGuards(AuthGuard, RolesGuard)

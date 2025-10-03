@@ -15,11 +15,29 @@ import { UpdateBudgetDto } from './dto/update-budget.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
+import {
+  ApiResponse,
+  ApiSecurity,
+  ApiOperation,
+  ApiBadRequestResponse,
+} from '@nestjs/swagger';
 
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('budget')
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}
+
+  @ApiOperation({ summary: 'Create a budget' })
+  @ApiResponse({
+    status: 201,
+    description: 'The budget has been successfully created.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data.',
+    schema: { example: { errors: [{ message: 'Error creating budget' }] } },
+  })
+  @ApiSecurity('access_token')
+  @ApiSecurity('refresh_token')
   @Roles(['user', 'family_admin'])
   @Post()
   create(@Body() createBudget: CreateBudgetDto, @Response() res) {

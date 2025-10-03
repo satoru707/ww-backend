@@ -14,6 +14,7 @@ import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
 
 @Controller('goal')
 @UseGuards(AuthGuard, RolesGuard)

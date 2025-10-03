@@ -18,13 +18,15 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
-
+      console.log(jwt);
       const budget = await this.prisma.budget.create({
         data: { ...createBudget, user_id: jwt.sub },
       });
+      console.log('Created budget', budget);
+      
       return createSuccessResponse(budget);
     } catch (error) {
       console.error(error);
@@ -37,7 +39,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budgets = await this.prisma.budget.findMany({
@@ -57,7 +59,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
@@ -77,7 +79,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
@@ -101,7 +103,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
@@ -128,7 +130,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budget = await this.prisma.budget.create({
@@ -146,7 +148,7 @@ export class BudgetService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const budgets = await this.prisma.budget.findMany({

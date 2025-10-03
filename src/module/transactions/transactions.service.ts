@@ -17,7 +17,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const transaction = await this.prisma.transactions.create({
@@ -38,7 +38,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const transactions = await this.prisma.transactions.findMany({
@@ -56,7 +56,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const transaction = await this.prisma.transactions.findFirst({
@@ -78,7 +78,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       await this.prisma.transactions.delete({
@@ -97,7 +97,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       // get all family transactios
@@ -125,7 +125,7 @@ export class TransactionsService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const transaction = await this.prisma.transactions.create({

@@ -64,7 +64,7 @@ model Token {
   expiresAt DateTime
   @@index([user_id])
   @@index([token])
-  @@unique([user_id, type, token])
+  @@unique([user_id, type])
 }
 
 model Goals {
@@ -107,8 +107,9 @@ model Budget {
   limit_amount Decimal @db.Decimal(15, 2)
   month DateTime
   createdAt DateTime @default(now())
-  @@index([user_id])
-  @@index([familyId])
+  @@index([user_id], name: "idx_user_id")
+  @@index([familyId], name: "idx_familyId")
+  @@index([user_id, familyId], name: "idx_user_id_or_familyId")
 }
 
 model Investment {

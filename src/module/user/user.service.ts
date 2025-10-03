@@ -14,7 +14,7 @@ export class UserService {
 
   async find(res: Response) {
     try {
-      const jwt = await res.cookie['access_token'];
+      const jwt = await res.req.cookies.access_token;
       if (!process.env.JWT_SECERT)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;
@@ -43,7 +43,7 @@ export class UserService {
 
   async update(res: Response, updateUserDto) {
     try {
-      const jwt = await res.cookie['access_token'];
+      const jwt = await res.req.cookies.access_token;
       if (!process.env.JWT_SECERT)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;
@@ -57,7 +57,7 @@ export class UserService {
           tokens: true,
         },
       });
-      const refresh = res.cookie['refresh_token'];
+      const refresh = res.req.cookies.refresh_token;
       if (updateUserDto.role && refresh) {
         await this.prisma.token.delete({
           where: {
@@ -90,7 +90,7 @@ export class UserService {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const user = verify(
-        res.cookie['access_token'],
+        res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
       if (
@@ -115,7 +115,7 @@ export class UserService {
 
   async exportUserData(res: Response) {
     try {
-      const jwt = await res.cookie['access_token'];
+      const jwt = await res.req.cookies.access_token;
       if (!process.env.JWT_SECERT)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;

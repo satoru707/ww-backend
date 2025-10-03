@@ -14,6 +14,8 @@ import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
+import { RolesGuard } from '../role.guard';
+
 
 // create , get all, get one, edit investment, delete
 @UseGuards(AuthGuard, RolesGuard)

@@ -11,9 +11,10 @@ import {
 import bcrypt from 'node_modules/bcryptjs';
 import qrcode from 'qrcode';
 import speakeasy from '@levminer/speakeasy';
-import { sign } from 'jsonwebtoken';
+import { sign, verify } from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class AuthService {
@@ -78,7 +79,7 @@ export class AuthService {
         if (sent.errors)
           return createErrorResponse([{ message: sent.errors[0].message }]);
 
-        return createErrorResponse([{ message: 'Verify email' }]);
+        return createErrorResponse([{ message: 'Email not verified' }]);
       }
 
       if (userExists.is2FAEnabled) return createSuccessResponse('2FA Enabled');
@@ -90,6 +91,26 @@ export class AuthService {
     }
   }
 
+  async logout(res: Response) {
+    try {
+      const token = res.req.cookies.access_token;
+      if (token) {
+        if (process.env.JWT_SECRET) {
+          const decoded = verify(token, process.env.JWT_SECRET) as jwtPayload;
+          await this.prisma.token.delete({
+            where: { user_id_type: { user_id: decoded.sub, type: 'REFRESH' } },
+          });
+        }
+      }
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+      return createSuccessResponse('Logged out successfully');
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Error logging out' }]);
+    }
+  }
+
   async verify_email(nonce: string) {
     try {
       const token_exists = await this.prisma.token.findFirst({
@@ -97,8 +118,8 @@ export class AuthService {
       });
       if (!token_exists)
         return createErrorResponse([{ message: 'Invalid email link' }]);
-      if (new Date(token_exists.expiresAt) > new Date())
-        return createErrorResponse([{ message: 'Token Expired' }]);
+      if (token_exists.expiresAt < new Date())
+        return createErrorResponse([{ message: 'Invalid email link' }]);
       if (token_exists.user_id) {
         await this.prisma.user.update({
           where: { id: token_exists.user_id },
@@ -138,30 +159,40 @@ export class AuthService {
     }
   }
 
-  async enable_two_factor_auth(user_id: string) {
+  async enable_two_factor_auth(res: Response) {
     try {
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([{ message: 'Server Error' }]);
+      console.log(res.req.cookies.access_token);
+      const token = verify(
+        res.req.cookies.access_token,
+        process.env.JWT_SECRET,
+      ) as jwtPayload;
+      const user_id = token.sub;
       const user = await this.prisma.user.findFirst({
         where: { id: user_id },
       });
+      console.log('Found user');
       if (!user)
         return createErrorResponse([{ message: 'User does not exist' }]);
       const secret = speakeasy.generateSecret({
         length: 25,
         name: `Wealth Wave ${user.email}`,
       });
-      this.prisma.user.update({
+      await this.prisma.user.update({
         where: { id: user_id },
         data: { is2FAEnabled: true, two_factor_secret: secret.base32 },
       });
       const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
-      return createSuccessResponse({ qrCodeUrl });
+
+      return createSuccessResponse(qrCodeUrl);
     } catch (error) {
       console.error(error);
       return createErrorResponse([{ message: 'Error enabling 2FA' }]);
     }
   }
-
-  async verify_2fa(user_email: string, res: Response) {
+  // the response for only res and res.req.cookie apparentenly
+  async verify_2fa(user_email: string, code: string, res: Response) {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email: user_email },
@@ -172,13 +203,13 @@ export class AuthService {
       const verified = speakeasy.totp.verify({
         secret: user.two_factor_secret,
         encoding: 'base32',
-        token: user.two_factor_secret,
+        token: code,
       });
       if (!verified) {
         return createErrorResponse([{ message: 'Invalid 2FA code' }]);
       }
       await this.set_token(user, res);
-      return createSuccessResponse('2FA Enabled');
+      return createSuccessResponse('Login successful');
     } catch (error) {
       console.error(error);
       return createErrorResponse([{ message: 'Error' }]);
@@ -252,20 +283,30 @@ export class AuthService {
 
   async reset_password(resetDto: LoginDto) {
     try {
-      const user = await this.prisma.user.findFirst({
-        where: { email: resetDto.email },
+      const token = await this.prisma.token.findFirst({
+        where: { token: resetDto.nonce, type: 'CONFIRMATION' },
       });
-      if (!user)
+      if (!token)
         return createErrorResponse([{ message: 'User does not exist' }]);
-      await this.prisma.user.update({
+      await this.prisma.token.delete({
         where: {
-          id: user.id,
-        },
-        data: {
-          password: resetDto.password,
-          updatedAt: new Date(),
+          id: token.id,
+          user_id: token.user_id,
+          type: 'CONFIRMATION',
         },
       });
+      if (token.user_id) {
+        await this.prisma.user.update({
+          where: {
+            id: token.user_id,
+          },
+          data: {
+            password: resetDto.password,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
       return createSuccessResponse('Password reset successfull');
     } catch (error) {
       console.error(error);
@@ -311,6 +352,8 @@ export class AuthService {
         process.env.JWT_SECRET,
         { expiresIn: '1h' },
       );
+      console.log('access', jwt_token);
+      console.log('refresh', nonce);
       res.cookie('access_token', jwt_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -362,10 +405,10 @@ export class AuthService {
           <p>Hi ${user.name},</p>
           <p>Thank you for registering with WealthWave! To complete your registration, please verify your email address by clicking the button below:</p>
           <p style="text-align: center;">
-            <a href="https://your-api.com/api/auth/verify?token=${nonce}" class="button">Verify Email</a>
+            <a href="https://your-api.com/auth/verify?token=${nonce}" class="button">Verify Email</a>
           </p>
           <p>If the button doesn't work, copy and paste this link into your browser:</p>
-          <p><a href="${process.env.CLIENT_URL}/api/auth/verify?token=${nonce}">${process.env.CLIENT_URL}/api/auth/verify?token=${nonce}</a></p>
+          <p><a href="${process.env.CLIENT_URL}/auth/verify?token=${nonce}">${process.env.CLIENT_URL}/auth/verify?token=${nonce}</a></p>
           <p>This link expires in 24 hours.</p>
         </div>
         <div class="footer">
