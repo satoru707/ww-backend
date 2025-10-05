@@ -16,6 +16,41 @@ export class FamilyService {
     private prisma: PrismaService,
     private auth: AuthService,
   ) {}
+
+  async get_family(res: Response) {
+    try {
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([{ message: 'Server Error' }]);
+      const jwt = verify(
+        res.req.cookies.access_token,
+        process.env.JWT_SECRET,
+      ) as jwtPayload;
+      const user = await this.prisma.user.findFirst({
+        where: { id: jwt.sub },
+        include: { family: true },
+      });
+      let family;
+      if (jwt.role === 'FAMILY_ADMIN') {
+        family = await this.prisma.family.findFirst({
+          where: { admin_id: jwt.sub },
+          include: { members: true },
+        });
+      } else if (user?.familyId) {
+        family = await this.prisma.family.findFirst({
+          where: { id: user?.familyId },
+          include: { members: true },
+        });
+      }
+
+      if (!family)
+        return createErrorResponse([{ message: 'User has no family' }]);
+      return createSuccessResponse(family);
+    } catch (error) {
+      console.error(error);
+      return createErrorResponse([{ message: 'Error fetching family' }]);
+    }
+  }
+
   async create(name, res: Response) {
     try {
       if (!process.env.JWT_SECRET)
@@ -36,11 +71,13 @@ export class FamilyService {
 
   async add_member(familyId: string, familyName: string, email: string) {
     try {
-      const user = await this.prisma.user.findFirst({
+      const user = await this.prisma.user.findUnique({
         where: { email: email },
       });
       if (!user)
         return createErrorResponse([{ message: 'User does not exist' }]);
+      if (user.familyId)
+        return createErrorResponse([{ message: 'User already in a family' }]);
       const nonce = crypto.randomBytes(32).toString('hex');
       await this.prisma.token.create({
         data: {
@@ -69,19 +106,30 @@ export class FamilyService {
 
   async accept_invite(nonce: string) {
     try {
-      const data = await this.prisma.token.findFirst({
-        where: { token: nonce },
+      const data = await this.prisma.token.findUnique({
+        where: {
+          token_type: {
+            token: nonce,
+            type: 'FAMILY',
+          },
+        },
       });
-      if (!data || data.expiresAt > new Date())
+      if (!data || data.expiresAt < new Date())
         return createErrorResponse([{ message: 'Invalid token' }]);
-      if (data.member_id) {
-        await this.prisma.user.update({
-          where: { id: data.member_id },
+      if (data.family_id && data.member_id) {
+        await this.prisma.family.update({
+          where: { id: data?.family_id },
           data: {
-            familyId: data.family_id,
+            members: {
+              connect: { id: data?.member_id },
+            },
           },
         });
       }
+      // delete all token family types where member_id is user
+      await this.prisma.token.deleteMany({
+        where: { member_id: data?.member_id },
+      });
       return createSuccessResponse('Join Family successful');
     } catch (error) {
       console.error(error);

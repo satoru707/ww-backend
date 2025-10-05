@@ -62,7 +62,7 @@ export class InvestmentService {
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const investment = await this.prisma.investment.findFirst({
-        where: { id, user_id: jwt.sub },
+        where: { id: id, user_id: jwt.sub },
       });
       if (!investment)
         return createErrorResponse([{ message: 'Investment not found' }]);
@@ -111,7 +111,7 @@ export class InvestmentService {
         process.env.JWT_SECRET,
       ) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({
-        where: { id, user_id: jwt.sub },
+        where: { id: id, user_id: jwt.sub },
       });
       if (!existingInvestment)
         return createErrorResponse([{ message: 'Investment not found' }]);

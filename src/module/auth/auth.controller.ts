@@ -13,15 +13,6 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
-class ErrorResponse {
-  errors: { message: string }[];
-}
-
-class SuccessResponse {
-  data: any;
-  message: string | null;
-}
-
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {

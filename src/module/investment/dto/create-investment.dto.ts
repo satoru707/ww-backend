@@ -1,15 +1,16 @@
-import { IsDate, IsDecimal, IsString } from 'class-validator';
+import { IsDate, IsDecimal, IsString, IsNumber } from 'class-validator';
 
 export class CreateInvestmentDto {
   @IsString()
   symbol: string;
 
-  @IsDecimal()
+  @IsNumber()
   quantity: number;
 
-  @IsDecimal()
+  @IsNumber()
   purchase_price: number;
 
-  @IsDate()
+  // @IsDate()
+  @IsString()
   purchase_date: Date;
 }

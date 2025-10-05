@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id String @id @default(cuid())
+  id String @id @default(cuid()) @unique
   name String
   email String @unique
   password String
@@ -52,7 +52,7 @@ model Family {
 }
 
 model Token {
-  id String @id @default(cuid())
+  id String @id @default(cuid()) @unique
   user_id String?
   user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
   token String
@@ -65,6 +65,7 @@ model Token {
   @@index([user_id])
   @@index([token])
   @@unique([user_id, type])
+  @@unique([token, type])
 }
 
 model Goals {
@@ -121,6 +122,7 @@ model Investment {
   purchase_price Decimal @db.Decimal(15, 2)
   purchase_date DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
   @@index([user_id])
 }
 
@@ -184,6 +186,7 @@ enum TokenType {
   REFRESH
   CONFIRMATION
   FAMILY
+  RESET
 }
 
 enum PaymentStatus {

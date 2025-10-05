@@ -23,6 +23,8 @@ import {
 } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard, RolesGuard)
+@ApiSecurity('access_token')
+@ApiSecurity('refresh_token')
 @Controller('budget')
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}
@@ -41,7 +43,7 @@ export class BudgetController {
           month: '2023-10-01T00:00:00.000Z',
           createdAt: '2023-10-01T12:00:00.000Z',
         },
-        errors: [],
+        errors: null,
       },
     },
   })
@@ -49,8 +51,6 @@ export class BudgetController {
     description: 'Invalid input data.',
     schema: { example: { errors: [{ message: 'Error creating budget' }] } },
   })
-  @ApiSecurity('access_token')
-  @ApiSecurity('refresh_token')
   @Roles(['user', 'family_admin'])
   @Post()
   create(

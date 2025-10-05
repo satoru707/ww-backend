@@ -19,6 +19,7 @@ import {
   ApiResponse,
   ApiBadRequestResponse,
   ApiSecurity,
+  ApiBody,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
@@ -33,6 +34,8 @@ class SuccessResponse {
 
 @Controller('user')
 @UseGuards(AuthGuard, RolesGuard)
+@ApiSecurity('access_token')
+@ApiSecurity('refresh_token')
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -41,7 +44,10 @@ export class UserController {
 
   @Get('me')
   @Roles(['user', 'family_admin', 'admin'])
-  @ApiOperation({ summary: 'Get current user details' })
+  @ApiOperation({
+    summary: 'Get current user details',
+    description: 'Retrieve the details of the currently authenticated user.',
+  })
   @ApiResponse({
     status: 200,
     description: 'The user details have been successfully retrieved.',
@@ -87,9 +93,50 @@ export class UserController {
 
   @Patch('me')
   @Roles(['user', 'family_admin', 'admin'])
+  @ApiOperation({
+    summary: 'Update current user details',
+    description: 'Update the details of the currently authenticated user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The user details have been successfully updated.',
+    schema: {
+      example: {
+        id: 'user-id',
+        email: 'updated-email',
+        name: 'updated-name',
+        role: 'user-role',
+        is2FAEnabled: true,
+        familyId: 'family-id',
+        status: 'active',
+        createdAt: '2023-10-01T00:00:00.000Z',
+        updatedAt: '2023-10-02T00:00:00.000Z',
+        tokens: [],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request',
+    schema: {
+      example: {
+        statusCode: 400,
+        errors: [{ message: 'Error updating user' }],
+      },
+    },
+  })
+  @ApiBody({
+    description: 'Fields to update (name and/or role)',
+    schema: {
+      example: {
+        name: 'new-name',
+        role: 'new-role',
+      },
+    },
+  })
   update(
     @Res({ passthrough: true }) res,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body()
+    updateUserDto: UpdateUserDto,
   ) {
     return this.userService.update(res, updateUserDto);
   }
@@ -107,9 +154,11 @@ export class UserController {
   }
 
   @Roles(['user', 'family_admin'])
-  @ApiSecurity('access_token')
-  @ApiSecurity('refresh_token')
-  @ApiOperation({ summary: 'Enable two-factor authentication' })
+  @ApiOperation({
+    summary: 'Enable two-factor authentication',
+    description:
+      'Enable two-factor authentication (2FA) for the current user. This will generate a QR code and secret key to set up 2FA in an authenticator app.',
+  })
   @ApiResponse({
     description: 'Two-factor authentication enabled successfully.',
 

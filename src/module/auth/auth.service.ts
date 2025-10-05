@@ -259,7 +259,7 @@ export class AuthService {
 
   async request_reset(email: string) {
     try {
-      const user = await this.prisma.user.findFirst({
+      const user = await this.prisma.user.findUnique({
         where: { email: email },
       });
       if (!user)
@@ -268,7 +268,7 @@ export class AuthService {
       await this.prisma.token.create({
         data: {
           token: nonce,
-          type: 'CONFIRMATION',
+          type: 'RESET',
           user_id: user.id,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
@@ -284,15 +284,14 @@ export class AuthService {
   async reset_password(resetDto: LoginDto) {
     try {
       const token = await this.prisma.token.findFirst({
-        where: { token: resetDto.nonce, type: 'CONFIRMATION' },
+        where: { token: resetDto.nonce, type: 'RESET' },
       });
       if (!token)
         return createErrorResponse([{ message: 'User does not exist' }]);
-      await this.prisma.token.delete({
+      await this.prisma.token.deleteMany({
         where: {
-          id: token.id,
           user_id: token.user_id,
-          type: 'CONFIRMATION',
+          type: 'RESET',
         },
       });
       if (token.user_id) {
@@ -419,8 +418,46 @@ export class AuthService {
     </html>
   `;
       } else if (user.status == 'FAMILY') {
-        title = '';
-        mail = '';
+       title = `You're invited to join the ${user.family_name} Family on WealthWave!`;
+       mail = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; margin: 0; padding: 0; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }
+      .header { background-color: #28a745; color: white; text-align: center; padding: 20px; }
+      .header h1 { margin: 0; font-size: 24px; }
+      .content { padding: 20px; background-color: white; border-radius: 5px; }
+      .button { display: inline-block; padding: 12px 24px; background-color: #28a745; color: white !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
+      .button:hover { background-color: #218838; }
+      .footer { text-align: center; font-size: 12px; color: #777; margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Join Your Family on WealthWave</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${user.name},</p>
+        <p>The <strong>${user.family_name}</strong> family has invited you to join their WealthWave household. Together, you can manage budgets, track goals, and make smarter financial decisions as a family unit.</p>
+        <p style="text-align: center;">
+          <a href="${process.env.CLIENT_URL}/family/join?token=${nonce}" class="button">Accept Invitation</a>
+        </p>
+        <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+        <p><a href="${process.env.CLIENT_URL}/family/join?token=${nonce}">${process.env.CLIENT_URL}/family/join?token=${nonce}</a></p>
+        <p>This invitation will expire in 24 hours. If you weren’t expecting this invitation, you can safely ignore this email.</p>
+      </div>
+      <div class="footer">
+        <p>&copy; 2025 WealthWave. Empowering families to grow wealth together.</p>
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
       } else {
         title = `Password Reset Request for WealthWave, ${user.name}`;
         mail = `

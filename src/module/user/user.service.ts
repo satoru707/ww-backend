@@ -7,6 +7,7 @@ import {
 } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { log } from 'console';
 
 @Injectable()
 export class UserService {
@@ -15,15 +16,29 @@ export class UserService {
   async find(res: Response) {
     try {
       const jwt = await res.req.cookies.access_token;
-      if (!process.env.JWT_SECERT)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;
-      const user = this.prisma.user.findFirst({
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([
+          { message: 'Internal Server Error, no secret' },
+        ]);
+      console.log(jwt);
+
+      const token = verify(jwt, process.env.JWT_SECRET) as jwtPayload;
+      console.log();
+
+      const user = await this.prisma.user.findUnique({
         where: {
           id: token.sub,
           email: token.email,
         },
         select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          familyId: true,
+          family_as_admin: true,
+          createdAt: true,
+          updatedAt: true,
           tokens: true,
           goals: true,
           transactions: true,
@@ -43,22 +58,79 @@ export class UserService {
 
   async update(res: Response, updateUserDto) {
     try {
+      console.log('Body', updateUserDto);
+
       const jwt = await res.req.cookies.access_token;
-      if (!process.env.JWT_SECERT)
+      if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const token = verify(jwt, process.env.JWT_SECERT) as jwtPayload;
+      const token = verify(jwt, process.env.JWT_SECRET) as jwtPayload;
+
       const user = await this.prisma.user.update({
         where: {
           id: token.sub,
           email: token.email,
         },
-        data: updateUserDto,
+        data: {
+          name: updateUserDto.name,
+          role: updateUserDto.role
+            ? updateUserDto.role.toUpperCase()
+            : undefined,
+        },
         select: {
           tokens: true,
+          name: true,
+          id: true,
+          family_as_admin: true,
+          familyId: true,
         },
       });
       const refresh = res.req.cookies.refresh_token;
       if (updateUserDto.role && refresh) {
+        // if upDateuserdto.role == family admin and user.family_as_admin exists return already a family admin, else create new family, if user.familyId exists return error you're in a family, only create new family if user.familyId and user.family_as_admin is null
+        // if upDateuserdto.role == user and user.family_as_admin exists, delete family where user is admin and set familyId of all members to null, set user.family_as_admin to null
+        if (updateUserDto.role.toLowerCase() === 'family_admin') {
+          if (user.family_as_admin) {
+            return createErrorResponse([
+              { message: 'You are already a family admin' },
+            ]);
+          }
+          if (user.familyId) {
+            return createErrorResponse([
+              { message: 'You are already in a family' },
+            ]);
+          }
+          await this.prisma.family.create({
+            data: {
+              name: `${user.name}'s Family`,
+              admin_id: user.id,
+            },
+          });
+        } else if (
+          updateUserDto.role.toLowerCase() === 'user' &&
+          user.familyId
+        ) {
+          if (user.family_as_admin) {
+            const members = await this.prisma.family.findUnique({
+              where: {
+                id: user.familyId,
+              },
+              select: {
+                members: true,
+              },
+            });
+            for (const member of members?.members || []) {
+              await this.prisma.user.update({
+                where: { id: member.id },
+                data: { familyId: null },
+              });
+            }
+            await this.prisma.family.delete({
+              where: { id: user.familyId },
+            });
+          }
+        }
+
+        // Delete the refresh token cookie
         await this.prisma.token.delete({
           where: {
             id: user.tokens.filter((token) => token.type === 'REFRESH')[0].id,
@@ -68,7 +140,7 @@ export class UserService {
         res.clearCookie('access_token');
       }
 
-      return createSuccessResponse('User updated successfully');
+      return createSuccessResponse(user);
     } catch (error) {
       console.error(error);
       return createErrorResponse([{ message: 'Error updating user' }]);
@@ -79,10 +151,6 @@ export class UserService {
     const users = await this.prisma.user.findMany();
 
     return createSuccessResponse(users);
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
   }
 
   async remove(id: string, res: Response) {
