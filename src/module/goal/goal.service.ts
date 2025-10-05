@@ -25,8 +25,8 @@ export class GoalService {
         data: {
           name: body.name,
           user_id: jwt.sub,
-          target_amount: body.deadline,
-          current_amount: body.current,
+          target_amount: body.target_amount,
+          current_amount: body.current_amount,
           deadline: new Date(body.deadline),
         },
       });
@@ -108,6 +108,7 @@ export class GoalService {
         res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
+      console.log(jwt.sub, id);
       await this.prisma.goals.delete({
         where: {
           user_id: jwt.sub,
@@ -117,7 +118,9 @@ export class GoalService {
       return createSuccessResponse('Deleted successfully');
     } catch (error) {
       console.error(error);
-      return createErrorResponse([{ message: 'Error deleting goal' }]);
+      return createErrorResponse([
+        { message: 'Error deleting goal or goal not found' },
+      ]);
     }
   }
 }

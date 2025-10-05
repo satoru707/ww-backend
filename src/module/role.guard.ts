@@ -20,7 +20,6 @@ export class RolesGuard implements CanActivate {
           return true;
         }
       }
-console.log('error');
 return false;
     } catch (error) {
       console.error(error);
