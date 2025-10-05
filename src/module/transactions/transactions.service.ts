@@ -94,24 +94,37 @@ export class TransactionsService {
 
   async findFamTransaction(res: Response) {
     try {
+      console.log('Testing');
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
       const jwt = verify(
         res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
-      // get all family transactios
       const user = await this.prisma.user.findUnique({
         where: { id: jwt.sub },
         include: { family: true },
       });
-      if (!user?.familyId)
+
+      if (!user?.familyId && user?.family)
         return createErrorResponse([
           { message: 'User does not belong to a family' },
         ]);
-      const transactions = await this.prisma.transactions.findMany({
-        where: { familyId: user.familyId },
-      });
+      let transactions;
+      if (user?.role == 'FAMILY_ADMIN' && user.family) {
+        transactions = await this.prisma.transactions.findMany({
+          where: {
+            familyId: user.family.id,
+          },
+        });
+      } else {
+        transactions = await this.prisma.transactions.findMany({
+          where: {
+            familyId: user?.familyId,
+          },
+        });
+      }
+     
 
       return createSuccessResponse(transactions);
     } catch (error) {

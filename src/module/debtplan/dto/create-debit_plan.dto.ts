@@ -1,13 +1,13 @@
-import { IsDecimal, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreatedeptplanDto {
   @IsString()
   debt_name: string;
 
-  @IsDecimal()
+  @IsString()
   amount: number;
 
-  @IsDecimal()
+  @IsString()
   interest_rate: number;
 
   @IsString()

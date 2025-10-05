@@ -1,13 +1,16 @@
-import { IsString, IsDecimal, IsBoolean } from 'class-validator';
+import { IsString, IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTransactionDto {
+  @IsOptional()
+  @ApiPropertyOptional()
   @IsString()
   description?: string;
 
   @IsString()
   category: string;
 
-  @IsDecimal()
+  @IsNumber()
   amount: number;
 
   @IsString()
@@ -16,6 +19,8 @@ export class CreateTransactionDto {
   @IsBoolean()
   is_recurring: boolean;
 
+  @IsOptional()
+  @ApiPropertyOptional()
   @IsString()
   familyId: string;
 
