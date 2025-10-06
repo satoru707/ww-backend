@@ -4,27 +4,35 @@ import {
   Post,
   Body,
   UseGuards,
-  Response,
+  Res,
+  Param,
 } from '@nestjs/common';
 import { AuditLogService } from './audit_log.service';
-import { CreateAuditLogDto } from './dto/create-audit_log.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
+import { ApiSecurity, ApiOperation, ApiParam } from '@nestjs/swagger';
+import type { Response } from 'express';
 
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(['admin'])
+@ApiSecurity('access_token')
+@ApiSecurity('refresh_token')
 @Controller('audit-log')
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
-  @Post()
-  create(@Body() createAuditLogDto: CreateAuditLogDto) {
-    return this.auditLogService.create(createAuditLogDto);
+  @Roles(['admin'])
+  @ApiOperation({ summary: 'Get all audit logs' })
+  @Get('all_logs')
+  findAll(@Res({ passthrough: true }) res: Response) {
+    return this.auditLogService.findAll();
   }
 
-  @Get()
-  findAll() {
-    return this.auditLogService.findAll();
+  @Roles(['admin'])
+  @ApiOperation({ summary: "Get user's audit log" })
+  @ApiParam({ name: 'id', type: 'string' })
+  @Get(':id')
+  findSome(@Param('id') id: string) {
+    return this.auditLogService.findSome(id);
   }
 }

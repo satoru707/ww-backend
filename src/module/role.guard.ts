@@ -3,6 +3,7 @@ import { verify } from 'jsonwebtoken';
 import { Reflector } from '@nestjs/core';
 import { Roles } from './role.decorator';
 import { jwtPayload } from 'src/types/types';
+import { log } from 'console';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -15,12 +16,13 @@ export class RolesGuard implements CanActivate {
       const token = req.cookies.access_token;
       if (!process.env.JWT_SECRET) return false;
       const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
+      console.log('Roles', roles);
       for (const role of roles) {
         if (role.toLowerCase() == payload.role.toLowerCase()) {
           return true;
         }
       }
-return false;
+      return false;
     } catch (error) {
       console.error(error);
       return false;

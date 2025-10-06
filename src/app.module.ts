@@ -14,6 +14,7 @@ import { PaymentModule } from './module/payment/payment.module';
 import { AuditLogModule } from './module/audit_log/audit_log.module';
 import { NotificationModule } from './module/notification/notification.module';
 import { deptplanModule } from './module/debtplan/debit_plan.module';
+import { MongooseModule } from '@nestjs/mongoose';
 
 // nest g resource <name>
 @Module({
@@ -30,6 +31,7 @@ import { deptplanModule } from './module/debtplan/debit_plan.module';
     deptplanModule,
     NotificationModule,
     AuditLogModule,
+    MongooseModule.forRoot('mongodb://localhost:27017/ww_audit_logs'),
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
