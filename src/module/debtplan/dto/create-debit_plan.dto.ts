@@ -1,15 +1,23 @@
-import { IsString } from 'class-validator';
+import { IsNumber, IsString, IsEnum } from 'class-validator';
+
+enum DebtStrategy {
+  Avalanche = 'AVALANCHE',
+  Snowball = 'SNOWBALL',
+}
 
 export class CreatedeptplanDto {
   @IsString()
   debt_name: string;
 
-  @IsString()
+  @IsNumber()
   amount: number;
 
-  @IsString()
+  @IsNumber()
   interest_rate: number;
 
   @IsString()
-  strategy: 'SNOWBALL' | 'AVALANCHE';
+  due_date: string;
+
+  @IsEnum(DebtStrategy)
+  strategy: DebtStrategy;
 }

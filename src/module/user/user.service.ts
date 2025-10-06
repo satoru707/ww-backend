@@ -148,12 +148,16 @@ export class UserService {
   }
 
   async findAll() {
-    const users = await this.prisma.user.findMany();
-
-    return createSuccessResponse(users);
+    try {
+      const users = await this.prisma.user.findMany();
+      return createSuccessResponse(users);
+    } catch (error) {
+      console.log(error);
+      return createErrorResponse([{ message: 'Error fetching users' }]);
+    }
   }
 
-  async remove(id: string, res: Response) {
+  async remove(res: Response) {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
@@ -161,18 +165,23 @@ export class UserService {
         res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
-      if (
-        !(
-          (user.sub == id && user.role == 'FAMILY_ADMIN') ||
-          user.role == 'USER'
-        ) &&
-        user.sub !== id &&
-        user.role == 'ADMIN'
-      )
-        return createErrorResponse([{ message: 'Insufficient Perminssion' }]);
+      // if (
+      //   !(
+      //     (user.sub == id && user.role == 'FAMILY_ADMIN') ||
+      //     user.role == 'USER'
+      //   ) &&
+      //   user.sub !== id &&
+      //   user.role == 'ADMIN'
+      // )
+      //   return createErrorResponse([{ message: 'Insufficient Perminssion' }]);
+      // await this.prisma.user.delete({
+      //   where: { id: id },
+      // });
       await this.prisma.user.delete({
-        where: { id: id },
+        where: { id: user.sub },
       });
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
 
       return createSuccessResponse('User deleted');
     } catch (error) {

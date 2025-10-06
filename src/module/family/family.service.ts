@@ -158,10 +158,16 @@ export class FamilyService {
         res.req.cookies.access_token,
         process.env.JWT_SECRET,
       ) as jwtPayload;
+      const user = await this.prisma.user.findUnique({
+        where: { id: jwt.sub },
+      });
+      if (!user?.familyId)
+        return createErrorResponse([{ message: 'User not in a family' }]);
       await this.prisma.user.update({
         where: { id: jwt.sub },
         data: { familyId: null },
       });
+
       return createSuccessResponse('Left family successfully');
     } catch (error) {
       console.error(error);
@@ -169,15 +175,36 @@ export class FamilyService {
     }
   }
 
-  async delete(familyId: string) {
+  async delete(res: Response, familyId: string) {
     try {
+      if (!process.env.JWT_SECRET)
+        return createErrorResponse([{ message: 'Server Error' }]);
+      const jwt = verify(
+        res.req.cookies.access_token,
+        process.env.JWT_SECRET,
+      ) as jwtPayload;
       await this.prisma.family.delete({
-        where: { id: familyId },
+        where: { id: familyId, admin_id: jwt.sub },
+      });
+      await this.prisma.user.updateMany({
+        where: { familyId: familyId },
+        data: { familyId: null },
+      });
+      await this.prisma.token.deleteMany({
+        where: { family_id: familyId },
+      });
+      await this.prisma.transactions.deleteMany({
+        where: { familyId: familyId },
+      });
+      await this.prisma.budget.deleteMany({
+        where: { familyId: familyId },
       });
       return createSuccessResponse('Family deleted successfully');
     } catch (error) {
       console.error(error);
-      return createErrorResponse([{ message: 'Error deleting family' }]);
+      return createErrorResponse([
+        { message: 'Error deleting family or insufficient permissions' },
+      ]);
     }
   }
 

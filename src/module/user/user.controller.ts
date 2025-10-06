@@ -23,15 +23,6 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
-class ErrorResponse {
-  errors: { message: string }[];
-}
-
-class SuccessResponse {
-  data: any;
-  message: string | null;
-}
-
 @Controller('user')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiSecurity('access_token')
@@ -87,7 +78,7 @@ export class UserController {
       },
     },
   })
-  find(@Res({ passthrough: true }) res) {
+  find(@Res({ passthrough: true }) res: Response) {
     return this.userService.find(res);
   }
 
@@ -134,7 +125,7 @@ export class UserController {
     },
   })
   update(
-    @Res({ passthrough: true }) res,
+    @Res({ passthrough: true }) res: Response,
     @Body()
     updateUserDto: UpdateUserDto,
   ) {
@@ -143,14 +134,85 @@ export class UserController {
 
   @Get()
   @Roles(['admin'])
+  @ApiOperation({
+    summary: 'Get all users (Admin only)',
+    description: 'Retrieve a list of all users in the system.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'A list of users has been successfully retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        data: [
+          {
+            id: 'user-id-1',
+            email: 'user1-email',
+            name: 'user1-name',
+            role: 'user1-role',
+            is2FAEnabled: false,
+            familyId: 'family-id-1',
+            status: 'active',
+            createdAt: '2023-10-01T00:00:00.000Z',
+            updatedAt: '2023-10-01T00:00:00.000Z',
+          },
+          {
+            id: 'user-id-2',
+            email: 'user2-email',
+            name: 'user2-name',
+            role: 'user2-role',
+            is2FAEnabled: true,
+            familyId: 'family-id-2',
+            status: 'active',
+            createdAt: '2023-10-02T00:00:00.000Z',
+            updatedAt: '2023-10-02T00:00:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request',
+    schema: {
+      example: {
+        statusCode: 400,
+        errors: [{ message: 'Error fetching users' }],
+      },
+    },
+  })
   findAll() {
     return this.userService.findAll();
   }
 
-  @Roles(['admin', 'user', 'family_admin'])
-  @Delete(':id')
-  remove(@Param('id') params: { id: string }, @Res({ passthrough: true }) res) {
-    return this.userService.remove(params.id, res);
+  @Roles(['user', 'family_admin'])
+  @Delete()
+  @ApiOperation({
+    summary: 'Delete current user account',
+    description:
+      'Delete the account of the currently authenticated user. This action is irreversible.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The user account has been successfully deleted.',
+    schema: {
+      example: {
+        statusCode: 200,
+        data: null,
+        message: 'User account deleted successfully',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request',
+    schema: {
+      example: {
+        statusCode: 400,
+        errors: [{ message: 'Error deleting user' }],
+      },
+    },
+  })
+  remove(@Res({ passthrough: true }) res) {
+    return this.userService.remove(res);
   }
 
   @Roles(['user', 'family_admin'])
@@ -188,6 +250,32 @@ export class UserController {
   }
 
   @Roles(['user', 'family_admin'])
+  @ApiOperation({
+    summary: 'Export user data',
+    description:
+      'Export all data associated with the current user in JSON format.',
+  })
+  @ApiResponse({
+    description: 'User data exported successfully.',
+
+    schema: {
+      example: {
+        id: 'user-id',
+        email: 'user-email',
+        name: 'user-name',
+        role: 'user-role',
+        is2FAEnabled: true,
+        familyId: 'family-id',
+        status: 'active',
+        createdAt: '2023-10-01T00:00:00.000Z',
+        updatedAt: '2023-10-01T00:00:00.000Z',
+        tokens: [],
+        goals: [],
+        family_as_admin: null,
+        transactions: [],
+      },
+    },
+  })
   @Get('export')
   exportUserData(@Res({ passthrough: true }) res) {
     return this.userService.exportUserData(res);

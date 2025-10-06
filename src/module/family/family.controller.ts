@@ -7,7 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
-  Response,
+  Res,
 } from '@nestjs/common';
 import { FamilyService } from './family.service';
 import { AuthGuard } from '../jwt.guard';
@@ -22,6 +22,7 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 
 @Controller('family')
 @ApiSecurity('access_token')
@@ -55,7 +56,7 @@ export class FamilyController {
     schema: { example: { errors: [{ message: 'User has no family' }] } },
   })
   @Get()
-  get_family(@Response({ passthrough: true }) res) {
+  get_family(@Res({ passthrough: true }) res: Response) {
     return this.familyService.get_family(res);
   }
 
@@ -78,7 +79,10 @@ export class FamilyController {
   })
   @Roles(['family_admin'])
   @Post()
-  create(@Body() body: CreateFamilyDto, @Response({ passthrough: true }) res) {
+  create(
+    @Body() body: CreateFamilyDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     return this.familyService.create(body.name, res);
   }
 
@@ -173,7 +177,7 @@ export class FamilyController {
   })
   @Roles(['family_admin', 'user'])
   @Delete('leave_family')
-  leave(@Response({ passthrough: true }) res) {
+  leave(@Res({ passthrough: true }) res) {
     return this.familyService.leave(res);
   }
 
@@ -188,14 +192,15 @@ export class FamilyController {
       example: { message: 'Family deleted successfully' },
     },
   })
+  @ApiParam({ name: 'id', type: 'string', description: 'Family ID' })
   @ApiBadRequestResponse({
     description: 'Error deleting the family.',
     schema: { example: { errors: [{ message: 'Error deleting family' }] } },
   })
-  @Roles(['family_admin', 'admin'])
-  @Delete('delete_family')
-  delete(@Param() param: { familyId?: string }) {
-    return this.familyService.delete(param.familyId || '');
+  @Roles(['family_admin'])
+  @Delete('delete_family/:id')
+  delete(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    return this.familyService.delete(res, id);
   }
 
   @ApiOperation({

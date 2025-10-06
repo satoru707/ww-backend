@@ -146,6 +146,7 @@ model DebtPlan {
   amount Decimal @db.Decimal(15, 2)
   interest_rate Decimal @db.Decimal(5, 2)
   strategy DebtStrategy
+  due_date String
   createdAt DateTime @default(now())
   @@index([user_id])
 }
