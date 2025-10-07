@@ -6,6 +6,8 @@ export class CreateAuditLogDto {
   @IsString()
   actionType: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   userId: string;
 

@@ -15,10 +15,14 @@ import { sign, verify } from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import { jwtPayload } from 'src/types/types';
+import { AuditLogService } from '../audit_log/audit_log.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private logs: AuditLogService,
+  ) {}
 
   async create(createAuthDto: CreateAuthDto) {
     try {
@@ -27,6 +31,12 @@ export class AuthService {
         where: { email: createAuthDto.email },
       });
       if (userExists) {
+        await this.logs.create({
+          userId: createAuthDto.email,
+          actionType: 'USER_SIGNUP',
+          level: 'ERROR',
+          details: JSON.stringify('User already exists'),
+        });
         return createErrorResponse([{ message: 'User already exists' }]);
       }
       const user = await this.prisma.user.create({
@@ -38,8 +48,15 @@ export class AuthService {
       });
       const nonce = crypto.randomBytes(32).toString('hex');
       const sent = await this.send_mail(user, nonce);
-      if (sent.errors)
+      if (sent.errors) {
+        await this.logs.create({
+          userId: user.id,
+          actionType: 'USER_SIGNUP',
+          level: 'ERROR',
+          details: JSON.stringify(sent.errors[0].message),
+        });
         return createErrorResponse([{ message: sent.errors[0].message }]);
+      }
       await this.prisma.token.create({
         data: {
           user_id: user.id,
@@ -48,9 +65,21 @@ export class AuthService {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       });
+      await this.logs.create({
+        userId: user.id,
+        actionType: 'SIGNUP',
+        level: 'INFO',
+        details: JSON.stringify(createAuthDto),
+      });
       return createSuccessResponse('Verify Email');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        actionType: 'USER_SIGNUP',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+        userId: createAuthDto.email,
+      });
       return createErrorResponse([{ message: 'Error creating account' }]);
     }
   }
@@ -418,8 +447,8 @@ export class AuthService {
     </html>
   `;
       } else if (user.status == 'FAMILY') {
-       title = `You're invited to join the ${user.family_name} Family on WealthWave!`;
-       mail = `
+        title = `You're invited to join the ${user.family_name} Family on WealthWave!`;
+        mail = `
   <!DOCTYPE html>
   <html lang="en">
   <head>
