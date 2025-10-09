@@ -10,6 +10,7 @@ import { Logs, LogsSchema } from './mongo/mongo.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Logs.name, schema: LogsSchema }]),
+    MongooseModule.forRoot(process.env.MONGO_URI || ''),
   ],
   controllers: [AuditLogController],
   providers: [AuditLogService, AuthGuard, RolesGuard, PrismaService],

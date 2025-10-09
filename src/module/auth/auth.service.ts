@@ -24,7 +24,7 @@ export class AuthService {
     private logs: AuditLogService,
   ) {}
 
-  async create(createAuthDto: CreateAuthDto) {
+  async create(createAuthDto: CreateAuthDto): Promise<ApiResponse<string>> {
     try {
       const hashed = await bcrypt.hash(createAuthDto.password, 10);
       const userExists = await this.prisma.user.findFirst({
@@ -84,22 +84,41 @@ export class AuthService {
     }
   }
 
-  async login(checkAuthDto: LoginDto, res: Response) {
+  async login(
+    checkAuthDto: LoginDto,
+    res: Response,
+  ): Promise<ApiResponse<string>> {
     try {
       const userExists = await this.prisma.user.findFirst({
         where: { email: checkAuthDto.email },
         include: { tokens: true },
       });
-      if (!userExists)
+      if (!userExists) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'LOGIN',
+          level: 'ERROR',
+          details: JSON.stringify('User does not exist'),
+        });
         return createErrorResponse([{ message: 'User does not exist' }]);
+      }
       const pass = await bcrypt.compare(
         checkAuthDto.password,
         userExists.password,
       );
-      if (!pass)
+      if (!pass) {
+        await this.logs.create({
+          userId: userExists.id,
+          actionType: 'LOGIN',
+          level: 'ERROR',
+          details: JSON.stringify(
+            `Invalid Credentials or Login method to ${checkAuthDto.email}`,
+          ),
+        });
         return createErrorResponse([
           { message: 'Invalid Credentials or Login method' },
         ]);
+      }
       if (userExists.status == 'PENDING') {
         const sent = await this.send_mail(
           userExists,
@@ -107,25 +126,56 @@ export class AuthService {
         );
         if (sent.errors)
           return createErrorResponse([{ message: sent.errors[0].message }]);
-
+        await this.logs.create({
+          userId: userExists.id,
+          actionType: 'LOGIN',
+          level: 'ERROR',
+          details: JSON.stringify(
+            `Invalid Credentials or Login method to ${checkAuthDto.email}`,
+          ),
+        });
         return createErrorResponse([{ message: 'Email not verified' }]);
       }
 
-      if (userExists.is2FAEnabled) return createSuccessResponse('2FA Enabled');
+      if (userExists.is2FAEnabled) {
+        await this.logs.create({
+          userId: userExists.id,
+          actionType: 'LOGIN',
+          level: 'INFO',
+          details: JSON.stringify(
+            `Login to ${checkAuthDto.email}, 2FA Enabled`,
+          ),
+        });
+        return createErrorResponse([{ message: '2FA Enabled' }]);
+      }
       await this.set_token(userExists, res);
+      await this.logs.create({
+        userId: userExists.id,
+        actionType: 'LOGIN',
+        level: 'INFO',
+        details: JSON.stringify(checkAuthDto),
+      });
       return createSuccessResponse('Login successful');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: checkAuthDto.email || 'N/A',
+        actionType: 'LOGIN',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error logging in' }]);
     }
   }
 
-  async logout(res: Response) {
+  async logout(res: Response): Promise<ApiResponse<string>> {
     try {
       const token = res.req.cookies.access_token;
+      let id;
       if (token) {
         if (process.env.JWT_SECRET) {
           const decoded = verify(token, process.env.JWT_SECRET) as jwtPayload;
+          id = decoded.sub;
           await this.prisma.token.delete({
             where: { user_id_type: { user_id: decoded.sub, type: 'REFRESH' } },
           });
@@ -133,22 +183,47 @@ export class AuthService {
       }
       res.clearCookie('access_token');
       res.clearCookie('refresh_token');
+      await this.logs.create({
+        userId: id,
+        actionType: 'LOGOUT',
+        level: 'INFO',
+        details: JSON.stringify('User logged out'),
+      });
       return createSuccessResponse('Logged out successfully');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'LOGOUT',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error logging out' }]);
     }
   }
 
-  async verify_email(nonce: string) {
+  async verify_email(nonce: string): Promise<ApiResponse<string>> {
     try {
       const token_exists = await this.prisma.token.findFirst({
         where: { token: nonce },
       });
-      if (!token_exists)
+      if (!token_exists) {
         return createErrorResponse([{ message: 'Invalid email link' }]);
-      if (token_exists.expiresAt < new Date())
+      }
+      if (token_exists.expiresAt < new Date()) {
+        await this.logs.create({
+          userId: token_exists.user_id || 'N/A',
+          actionType: 'VERIFY_EMAIL',
+          level: 'ERROR',
+          details: JSON.stringify('Email link expired'),
+        });
+        await this.prisma.token.delete({
+          where: {
+            id: token_exists.id,
+          },
+        });
         return createErrorResponse([{ message: 'Invalid email link' }]);
+      }
       if (token_exists.user_id) {
         await this.prisma.user.update({
           where: { id: token_exists.user_id },
@@ -160,14 +235,26 @@ export class AuthService {
           id: token_exists.id,
         },
       });
+      await this.logs.create({
+        userId: token_exists.user_id || 'N/A',
+        actionType: 'VERIFY_EMAIL',
+        level: 'INFO',
+        details: JSON.stringify('Email link verified'),
+      });
       return createSuccessResponse('Email verified');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'EMAIL_VERIFICATION',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Invalid email link' }]);
     }
   }
 
-  async refresh(res: Response) {
+  async refresh(res: Response): Promise<ApiResponse<string>> {
     try {
       const refresh = res.req.cookies.refresh_token;
       if (!refresh)
@@ -176,19 +263,40 @@ export class AuthService {
         where: { token: refresh },
         include: { user: true },
       });
-      if (!valid_token || valid_token.user == null)
+      if (
+        !valid_token ||
+        valid_token.user == null ||
+        valid_token.expiresAt < new Date()
+      ) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'TOKEN_REFRESH',
+          level: 'ERROR',
+          details: JSON.stringify('Invalid or Expired token'),
+        });
         return createErrorResponse([{ message: 'Invalid or Expired token' }]);
-      if (valid_token.expiresAt < new Date())
-        return createErrorResponse([{ message: 'Invalid or Expired token' }]);
+      }
       await this.set_token(valid_token.user, res);
+      await this.logs.create({
+        userId: valid_token.user.id,
+        actionType: 'TOKEN_REFRESH',
+        level: 'INFO',
+        details: JSON.stringify('Tokens refreshed'),
+      });
       return createSuccessResponse('Tokens refreshed');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'TOKEN_REFRESH',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error returning access token' }]);
     }
   }
 
-  async enable_two_factor_auth(res: Response) {
+  async enable_two_factor_auth(res: Response): Promise<ApiResponse<string>> {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
@@ -213,20 +321,41 @@ export class AuthService {
         data: { is2FAEnabled: true, two_factor_secret: secret.base32 },
       });
       const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
-
+      await this.logs.create({
+        userId: user_id,
+        actionType: 'ENABLE_2FA',
+        level: 'INFO',
+        details: JSON.stringify('2FA enabled'),
+      });
       return createSuccessResponse(qrCodeUrl);
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'ENABLE_2FA',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error enabling 2FA' }]);
     }
   }
   // the response for only res and res.req.cookie apparentenly
-  async verify_2fa(user_email: string, code: string, res: Response) {
+  async verify_2fa(
+    user_email: string,
+    code: string,
+    res: Response,
+  ): Promise<ApiResponse<string>> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email: user_email },
       });
       if (!user || !user.is2FAEnabled || !user.two_factor_secret) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'VERIFY_2FA',
+          level: 'ERROR',
+          details: JSON.stringify('2FA not enabled'),
+        });
         return createErrorResponse([{ message: '2FA not enabled' }]);
       }
       const verified = speakeasy.totp.verify({
@@ -235,17 +364,35 @@ export class AuthService {
         token: code,
       });
       if (!verified) {
+        await this.logs.create({
+          userId: user.id,
+          actionType: 'VERIFY_2FA',
+          level: 'ERROR',
+          details: JSON.stringify('Invalid 2FA code'),
+        });
         return createErrorResponse([{ message: 'Invalid 2FA code' }]);
       }
       await this.set_token(user, res);
+      await this.logs.create({
+        userId: user.id,
+        actionType: 'VERIFY_2FA',
+        level: 'INFO',
+        details: JSON.stringify('Login successful'),
+      });
       return createSuccessResponse('Login successful');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'VERIFY_2FA',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error' }]);
     }
   }
 
-  async google(code: string, res: Response) {
+  async google(code: string, res: Response): Promise<ApiResponse<string>> {
     try {
       const client = new OAuth2Client(
         process.env.GOOGLE_CLIENT_ID,
@@ -258,8 +405,16 @@ export class AuthService {
         audience: process.env.GOOGLE_CLIENT_ID,
       });
       const payload = ticket.getPayload();
-      if (!payload)
+      if (!payload) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'GOOGLE_LOGIN',
+          level: 'ERROR',
+          details: JSON.stringify('Invalid Google token'),
+        });
+
         return createErrorResponse([{ message: 'Invalid Google token' }]);
+      }
 
       const { sub, email, name } = payload as {
         sub: string;
@@ -276,23 +431,49 @@ export class AuthService {
             status: 'ACTIVE',
           },
         });
-      } else if (user?.is2FAEnabled)
+      } else if (user?.is2FAEnabled) {
+        await this.logs.create({
+          userId: user.id,
+          actionType: 'GOOGLE_LOGIN',
+          level: 'ERROR',
+          details: JSON.stringify('2FA Enabled'),
+        });
         return createSuccessResponse('2FA Enabled');
+      }
       await this.set_token(user, res);
+      await this.logs.create({
+        userId: user.id,
+        actionType: 'GOOGLE_LOGIN',
+        level: 'INFO',
+        details: JSON.stringify('Google login successful'),
+      });
       return createSuccessResponse('Google login successful');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'GOOGLE_LOGIN',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Google Error' }]);
     }
   }
 
-  async request_reset(email: string) {
+  async request_reset(email: string): Promise<ApiResponse<string>> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email: email },
       });
-      if (!user)
+      if (!user) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'REQUEST_RESET',
+          level: 'ERROR',
+          details: JSON.stringify('User does not exist'),
+        });
         return createErrorResponse([{ message: 'User does not exist' }]);
+      }
       const nonce = crypto.randomBytes(32).toString('hex');
       await this.prisma.token.create({
         data: {
@@ -303,20 +484,39 @@ export class AuthService {
         },
       });
       await this.send_mail(user, nonce);
+      await this.logs.create({
+        userId: user.id,
+        actionType: 'REQUEST_RESET',
+        level: 'INFO',
+        details: JSON.stringify('Email sent'),
+      });
       return createSuccessResponse('Email sent');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'REQUEST_RESET',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error requesting reset' }]);
     }
   }
 
-  async reset_password(resetDto: LoginDto) {
+  async reset_password(resetDto: LoginDto): Promise<ApiResponse<string>> {
     try {
       const token = await this.prisma.token.findFirst({
         where: { token: resetDto.nonce, type: 'RESET' },
       });
-      if (!token)
+      if (!token) {
+        await this.logs.create({
+          userId: 'N/A',
+          actionType: 'PASSWORD_RESET',
+          level: 'ERROR',
+          details: JSON.stringify('User does not exist'),
+        });
         return createErrorResponse([{ message: 'User does not exist' }]);
+      }
       await this.prisma.token.deleteMany({
         where: {
           user_id: token.user_id,
@@ -334,10 +534,22 @@ export class AuthService {
           },
         });
       }
+      await this.logs.create({
+        userId: token.user_id || 'N/A',
+        actionType: 'PASSWORD_RESET',
+        level: 'INFO',
+        details: JSON.stringify('Password reset successfull'),
+      });
 
       return createSuccessResponse('Password reset successfull');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: 'N/A',
+        actionType: 'PASSWORD_RESET',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error resetting password' }]);
     }
   }
@@ -548,6 +760,12 @@ export class AuthService {
       return createSuccessResponse('Email sent successfully');
     } catch (error) {
       console.error(error);
+      await this.logs.create({
+        userId: user.email || 'N/A',
+        actionType: 'SEND_EMAIL',
+        level: 'ERROR',
+        details: JSON.stringify(error.message),
+      });
       return createErrorResponse([{ message: 'Error sending mail' }]);
     }
   }

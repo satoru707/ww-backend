@@ -15,8 +15,8 @@ import { AuditLogModule } from './module/audit_log/audit_log.module';
 import { NotificationModule } from './module/notification/notification.module';
 import { deptplanModule } from './module/debtplan/debit_plan.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule } from '@nestjs/throttler';
 
-// nest g resource <name>
 @Module({
   imports: [
     AuthModule,
@@ -32,6 +32,14 @@ import { MongooseModule } from '@nestjs/mongoose';
     NotificationModule,
     AuditLogModule,
     MongooseModule.forRoot('mongodb://localhost:27017/ww_audit_logs'),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
