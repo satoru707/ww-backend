@@ -3,6 +3,7 @@ import { CreatedeptplanDto } from './dto/create-debit_plan.dto';
 import { UpdatedeptplanDto } from './dto/update-debit_plan.dto';
 import { Response } from 'express';
 import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -12,7 +13,10 @@ import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class deptplanService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
 
   async create(body: CreatedeptplanDto, res: Response) {
     try {
@@ -28,6 +32,14 @@ export class deptplanService {
           user_id: jwt.sub,
         },
       });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `Debt plan created: ${debtplan.id}`,
+        });
+      } catch (e) {
+        console.error('Failed to create debt plan notification', e);
+      }
       return createSuccessResponse(debtplan);
     } catch (error) {
       console.error(error);

@@ -16,12 +16,15 @@ import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import { jwtPayload } from 'src/types/types';
 import { AuditLogService } from '../audit_log/audit_log.service';
+import { NotificationService } from '../notification/notification.service';
+import { logEvent } from 'src/common/log.helper';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private logs: AuditLogService,
+    private notifications: NotificationService,
   ) {}
 
   async create(createAuthDto: CreateAuthDto): Promise<ApiResponse<string>> {
@@ -31,11 +34,11 @@ export class AuthService {
         where: { email: createAuthDto.email },
       });
       if (userExists) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: createAuthDto.email,
           actionType: 'USER_SIGNUP',
           level: 'ERROR',
-          details: JSON.stringify('User already exists'),
+          details: 'User already exists',
         });
         return createErrorResponse([{ message: 'User already exists' }]);
       }
@@ -48,14 +51,15 @@ export class AuthService {
       });
       const nonce = crypto.randomBytes(32).toString('hex');
       const sent = await this.send_mail(user, nonce);
-      if (sent.errors) {
-        await this.logs.create({
+      if (sent?.errors && sent.errors.length) {
+        const sendErrMsg = sent.errors?.[0]?.message || 'Email send error';
+        await logEvent(this.logs, {
           userId: user.id,
           actionType: 'USER_SIGNUP',
           level: 'ERROR',
-          details: JSON.stringify(sent.errors[0].message),
+          details: sendErrMsg,
         });
-        return createErrorResponse([{ message: sent.errors[0].message }]);
+        return createErrorResponse([{ message: sendErrMsg }]);
       }
       await this.prisma.token.create({
         data: {
@@ -65,19 +69,19 @@ export class AuthService {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       });
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user.id,
         actionType: 'SIGNUP',
         level: 'INFO',
-        details: JSON.stringify(createAuthDto),
+        details: createAuthDto,
       });
       return createSuccessResponse('Verify Email');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         actionType: 'USER_SIGNUP',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
         userId: createAuthDto.email,
       });
       return createErrorResponse([{ message: 'Error creating account' }]);
@@ -94,11 +98,11 @@ export class AuthService {
         include: { tokens: true },
       });
       if (!userExists) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'LOGIN',
           level: 'ERROR',
-          details: JSON.stringify('User does not exist'),
+          details: 'User does not exist',
         });
         return createErrorResponse([{ message: 'User does not exist' }]);
       }
@@ -107,13 +111,11 @@ export class AuthService {
         userExists.password,
       );
       if (!pass) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: userExists.id,
           actionType: 'LOGIN',
           level: 'ERROR',
-          details: JSON.stringify(
-            `Invalid Credentials or Login method to ${checkAuthDto.email}`,
-          ),
+          details: `Invalid Credentials or Login method to ${checkAuthDto.email}`,
         });
         return createErrorResponse([
           { message: 'Invalid Credentials or Login method' },
@@ -124,45 +126,47 @@ export class AuthService {
           userExists,
           userExists.tokens[0].token,
         );
-        if (sent.errors)
-          return createErrorResponse([{ message: sent.errors[0].message }]);
-        await this.logs.create({
+        if (sent?.errors && sent.errors.length)
+          return createErrorResponse([
+            { message: sent.errors?.[0]?.message || 'Email send error' },
+          ]);
+        await logEvent(this.logs, {
           userId: userExists.id,
           actionType: 'LOGIN',
           level: 'ERROR',
-          details: JSON.stringify(
-            `Invalid Credentials or Login method to ${checkAuthDto.email}`,
-          ),
+          details: `Invalid Credentials or Login method to ${checkAuthDto.email}`,
         });
         return createErrorResponse([{ message: 'Email not verified' }]);
       }
 
       if (userExists.is2FAEnabled) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: userExists.id,
           actionType: 'LOGIN',
           level: 'INFO',
-          details: JSON.stringify(
-            `Login to ${checkAuthDto.email}, 2FA Enabled`,
-          ),
+          details: `Login to ${checkAuthDto.email}, 2FA Enabled`,
         });
         return createErrorResponse([{ message: '2FA Enabled' }]);
       }
       await this.set_token(userExists, res);
-      await this.logs.create({
-        userId: userExists.id,
-        actionType: 'LOGIN',
-        level: 'INFO',
-        details: JSON.stringify(checkAuthDto),
-      });
+      await logEvent(
+        this.logs,
+        {
+          userId: userExists.id,
+          actionType: 'LOGIN',
+          level: 'INFO',
+          details: checkAuthDto,
+        },
+        res.req,
+      );
       return createSuccessResponse('Login successful');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: checkAuthDto.email || 'N/A',
         actionType: 'LOGIN',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error logging in' }]);
     }
@@ -183,21 +187,29 @@ export class AuthService {
       }
       res.clearCookie('access_token');
       res.clearCookie('refresh_token');
-      await this.logs.create({
-        userId: id,
-        actionType: 'LOGOUT',
-        level: 'INFO',
-        details: JSON.stringify('User logged out'),
-      });
+      await logEvent(
+        this.logs,
+        {
+          userId: id,
+          actionType: 'LOGOUT',
+          level: 'INFO',
+          details: 'User logged out',
+        },
+        res.req,
+      );
       return createSuccessResponse('Logged out successfully');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
-        userId: 'N/A',
-        actionType: 'LOGOUT',
-        level: 'ERROR',
-        details: JSON.stringify(error.message),
-      });
+      await logEvent(
+        this.logs,
+        {
+          userId: 'N/A',
+          actionType: 'LOGOUT',
+          level: 'ERROR',
+          details: error?.message || String(error),
+        },
+        res.req,
+      );
       return createErrorResponse([{ message: 'Error logging out' }]);
     }
   }
@@ -211,11 +223,11 @@ export class AuthService {
         return createErrorResponse([{ message: 'Invalid email link' }]);
       }
       if (token_exists.expiresAt < new Date()) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: token_exists.user_id || 'N/A',
           actionType: 'VERIFY_EMAIL',
           level: 'ERROR',
-          details: JSON.stringify('Email link expired'),
+          details: 'Email link expired',
         });
         await this.prisma.token.delete({
           where: {
@@ -235,20 +247,20 @@ export class AuthService {
           id: token_exists.id,
         },
       });
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: token_exists.user_id || 'N/A',
         actionType: 'VERIFY_EMAIL',
         level: 'INFO',
-        details: JSON.stringify('Email link verified'),
+        details: 'Email link verified',
       });
       return createSuccessResponse('Email verified');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'EMAIL_VERIFICATION',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Invalid email link' }]);
     }
@@ -268,29 +280,29 @@ export class AuthService {
         valid_token.user == null ||
         valid_token.expiresAt < new Date()
       ) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'TOKEN_REFRESH',
           level: 'ERROR',
-          details: JSON.stringify('Invalid or Expired token'),
+          details: 'Invalid or Expired token',
         });
         return createErrorResponse([{ message: 'Invalid or Expired token' }]);
       }
       await this.set_token(valid_token.user, res);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: valid_token.user.id,
         actionType: 'TOKEN_REFRESH',
         level: 'INFO',
-        details: JSON.stringify('Tokens refreshed'),
+        details: 'Tokens refreshed',
       });
       return createSuccessResponse('Tokens refreshed');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'TOKEN_REFRESH',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error returning access token' }]);
     }
@@ -321,20 +333,20 @@ export class AuthService {
         data: { is2FAEnabled: true, two_factor_secret: secret.base32 },
       });
       const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user_id,
         actionType: 'ENABLE_2FA',
         level: 'INFO',
-        details: JSON.stringify('2FA enabled'),
+        details: '2FA enabled',
       });
       return createSuccessResponse(qrCodeUrl);
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'ENABLE_2FA',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error enabling 2FA' }]);
     }
@@ -350,11 +362,11 @@ export class AuthService {
         where: { email: user_email },
       });
       if (!user || !user.is2FAEnabled || !user.two_factor_secret) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'VERIFY_2FA',
           level: 'ERROR',
-          details: JSON.stringify('2FA not enabled'),
+          details: '2FA not enabled',
         });
         return createErrorResponse([{ message: '2FA not enabled' }]);
       }
@@ -364,29 +376,29 @@ export class AuthService {
         token: code,
       });
       if (!verified) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: user.id,
           actionType: 'VERIFY_2FA',
           level: 'ERROR',
-          details: JSON.stringify('Invalid 2FA code'),
+          details: 'Invalid 2FA code',
         });
         return createErrorResponse([{ message: 'Invalid 2FA code' }]);
       }
       await this.set_token(user, res);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user.id,
         actionType: 'VERIFY_2FA',
         level: 'INFO',
-        details: JSON.stringify('Login successful'),
+        details: 'Login successful',
       });
       return createSuccessResponse('Login successful');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'VERIFY_2FA',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error' }]);
     }
@@ -406,11 +418,11 @@ export class AuthService {
       });
       const payload = ticket.getPayload();
       if (!payload) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'GOOGLE_LOGIN',
           level: 'ERROR',
-          details: JSON.stringify('Invalid Google token'),
+          details: 'Invalid Google token',
         });
 
         return createErrorResponse([{ message: 'Invalid Google token' }]);
@@ -432,29 +444,29 @@ export class AuthService {
           },
         });
       } else if (user?.is2FAEnabled) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: user.id,
           actionType: 'GOOGLE_LOGIN',
           level: 'ERROR',
-          details: JSON.stringify('2FA Enabled'),
+          details: '2FA Enabled',
         });
         return createSuccessResponse('2FA Enabled');
       }
       await this.set_token(user, res);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user.id,
         actionType: 'GOOGLE_LOGIN',
         level: 'INFO',
-        details: JSON.stringify('Google login successful'),
+        details: 'Google login successful',
       });
       return createSuccessResponse('Google login successful');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'GOOGLE_LOGIN',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Google Error' }]);
     }
@@ -466,11 +478,11 @@ export class AuthService {
         where: { email: email },
       });
       if (!user) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'REQUEST_RESET',
           level: 'ERROR',
-          details: JSON.stringify('User does not exist'),
+          details: 'User does not exist',
         });
         return createErrorResponse([{ message: 'User does not exist' }]);
       }
@@ -484,20 +496,20 @@ export class AuthService {
         },
       });
       await this.send_mail(user, nonce);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user.id,
         actionType: 'REQUEST_RESET',
         level: 'INFO',
-        details: JSON.stringify('Email sent'),
+        details: 'Email sent',
       });
       return createSuccessResponse('Email sent');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'REQUEST_RESET',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error requesting reset' }]);
     }
@@ -509,11 +521,11 @@ export class AuthService {
         where: { token: resetDto.nonce, type: 'RESET' },
       });
       if (!token) {
-        await this.logs.create({
+        await logEvent(this.logs, {
           userId: 'N/A',
           actionType: 'PASSWORD_RESET',
           level: 'ERROR',
-          details: JSON.stringify('User does not exist'),
+          details: 'User does not exist',
         });
         return createErrorResponse([{ message: 'User does not exist' }]);
       }
@@ -534,21 +546,40 @@ export class AuthService {
           },
         });
       }
-      await this.logs.create({
-        userId: token.user_id || 'N/A',
+      // Structured audit log (non-blocking)
+      await logEvent(this.logs, {
+        userId: (token.user_id || 'N/A') as string,
         actionType: 'PASSWORD_RESET',
         level: 'INFO',
-        details: JSON.stringify('Password reset successfull'),
+        details: { message: 'Password reset successful' },
       });
+      // Structured audit log (non-blocking)
+      await logEvent(this.logs, {
+        userId: (token.user_id || 'N/A') as string,
+        actionType: 'PASSWORD_RESET',
+        level: 'INFO',
+        details: { message: 'Password reset successful' },
+      });
+
+      // create in-app notification for password reset
+      try {
+        await this.notifications.createForUser(token.user_id || '', {
+          type: 'PUSH',
+          message: 'Your password was changed successfully',
+        });
+      } catch (e) {
+        // non-blocking
+        console.error('Failed to create password reset notification', e);
+      }
 
       return createSuccessResponse('Password reset successfull');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'PASSWORD_RESET',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error resetting password' }]);
     }
@@ -756,15 +787,13 @@ export class AuthService {
         subject: title,
         html: mail,
       };
-      await transporter.sendMail(mailOptions);
-      return createSuccessResponse('Email sent successfully');
     } catch (error) {
       console.error(error);
-      await this.logs.create({
+      await logEvent(this.logs, {
         userId: user.email || 'N/A',
         actionType: 'SEND_EMAIL',
         level: 'ERROR',
-        details: JSON.stringify(error.message),
+        details: error?.message || String(error),
       });
       return createErrorResponse([{ message: 'Error sending mail' }]);
     }

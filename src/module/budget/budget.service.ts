@@ -9,10 +9,14 @@ import {
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
 import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class BudgetService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
   async create(createBudget: CreateBudgetDto, res: Response) {
     try {
       if (!process.env.JWT_SECRET)
@@ -24,6 +28,14 @@ export class BudgetService {
       const budget = await this.prisma.budget.create({
         data: { ...createBudget, user_id: jwt.sub },
       });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `Budget created: ${budget.category}`,
+        });
+      } catch (e) {
+        console.error('Failed to create budget notification', e);
+      }
       return createSuccessResponse(budget);
     } catch (error) {
       console.error(error);
@@ -133,6 +145,14 @@ export class BudgetService {
       const budget = await this.prisma.budget.create({
         data: { ...createBudgetDto, familyId: familyId, user_id: jwt.sub },
       });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `Family budget created: ${budget.category}`,
+        });
+      } catch (e) {
+        console.error('Failed to create family budget notification', e);
+      }
       return createSuccessResponse(budget);
     } catch (error) {
       console.error(error);

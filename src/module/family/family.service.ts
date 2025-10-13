@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../notification/notification.service';
+import { AuditLogService } from '../audit_log/audit_log.service';
+import { logEvent } from 'src/common/log.helper';
 import { Response } from 'express';
 import {
   createSuccessResponse,
@@ -15,6 +18,8 @@ export class FamilyService {
   constructor(
     private prisma: PrismaService,
     private auth: AuthService,
+    private notifications: NotificationService,
+    private logs: AuditLogService,
   ) {}
 
   async get_family(res: Response) {
@@ -62,6 +67,14 @@ export class FamilyService {
       const family = await this.prisma.family.create({
         data: { name: name, admin_id: jwt.sub },
       });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `Family created: ${family.name}`,
+        });
+      } catch (e) {
+        console.error('Failed to create family notification', e);
+      }
       return createSuccessResponse(family);
     } catch (error) {
       console.error(error);
@@ -79,7 +92,7 @@ export class FamilyService {
       if (user.familyId)
         return createErrorResponse([{ message: 'User already in a family' }]);
       const nonce = crypto.randomBytes(32).toString('hex');
-      await this.prisma.token.create({
+      const token = await this.prisma.token.create({
         data: {
           token: nonce,
           type: 'FAMILY',
@@ -97,6 +110,22 @@ export class FamilyService {
         },
         nonce,
       );
+      // create in-app notification for invite
+      try {
+        await this.notifications.createForUser(user.id, {
+          type: 'PUSH',
+          message: `You have been invited to join family ${familyName}`,
+        });
+      } catch (e) {
+        console.error('Failed to create family invite notification', e);
+      }
+      // audit log
+      await logEvent(this.logs, {
+        userId: user.id,
+        actionType: 'FAMILY_INVITE_SENT',
+        level: 'INFO',
+        details: { familyId: familyId, invitedEmail: user.email },
+      });
       return createSuccessResponse('Email sent successfully');
     } catch (error) {
       console.error(error);

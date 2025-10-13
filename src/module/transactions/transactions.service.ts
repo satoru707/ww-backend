@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Response } from 'express';
 import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from '../notification/notification.service';
+import { AuditLogService } from '../audit_log/audit_log.service';
+import { logEvent } from 'src/common/log.helper';
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -11,7 +14,11 @@ import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class TransactionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+    private logs: AuditLogService,
+  ) {}
   async create(body: CreateTransactionDto, res: Response) {
     try {
       if (!process.env.JWT_SECRET)
@@ -24,6 +31,26 @@ export class TransactionsService {
         data: {
           ...body,
           user_id: jwt.sub,
+        },
+      });
+      // create in-app notification (non-blocking)
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `New transaction recorded: ₦${transaction.amount}`,
+        });
+      } catch (e) {
+        console.error('Failed to create transaction notification', e);
+      }
+      // audit log
+      await logEvent(this.logs, {
+        userId: (jwt.sub || 'N/A') as string,
+        actionType: 'TRANSACTION_CREATED',
+        level: 'INFO',
+        details: {
+          id: transaction.id,
+          amount: transaction.amount,
+          category: transaction.category,
         },
       });
       return createSuccessResponse(transaction);
@@ -124,7 +151,6 @@ export class TransactionsService {
           },
         });
       }
-     
 
       return createSuccessResponse(transactions);
     } catch (error) {
@@ -145,6 +171,24 @@ export class TransactionsService {
         data: {
           ...body,
           user_id: jwt.sub,
+        },
+      });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `New family transaction: ₦${transaction.amount}`,
+        });
+      } catch (e) {
+        console.error('Failed to create family transaction notification', e);
+      }
+      await logEvent(this.logs, {
+        userId: (jwt.sub || 'N/A') as string,
+        actionType: 'TRANSACTION_CREATED',
+        level: 'INFO',
+        details: {
+          id: transaction.id,
+          amount: transaction.amount,
+          familyId: transaction.familyId,
         },
       });
       return createSuccessResponse(transaction);

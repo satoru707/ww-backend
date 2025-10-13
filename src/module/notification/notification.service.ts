@@ -140,4 +140,21 @@ export class NotificationService {
       return createErrorResponse([{ message: 'Error deleting notifications' }]);
     }
   }
+
+  // Create a notification for a specific user id (used when Response / cookie is not available)
+  async createForUser(
+    userId: string,
+    createNotificationDto: CreateNotificationDto,
+  ): Promise<ApiResponse<any>> {
+    try {
+      const notification = await this.notificationModel.create({
+        ...createNotificationDto,
+        user_id: userId,
+      });
+      return createSuccessResponse(notification);
+    } catch (error) {
+      console.error('Error creating notification for user', error);
+      return createErrorResponse([{ message: 'Error creating notification' }]);
+    }
+  }
 }

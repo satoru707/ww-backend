@@ -3,6 +3,7 @@ import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { Response } from 'express';
 import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -12,7 +13,10 @@ import { jwtPayload } from 'src/types/types';
 
 @Injectable()
 export class GoalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
   async create(body: CreateGoalDto, res: Response) {
     try {
       if (!process.env.JWT_SECRET)
@@ -30,6 +34,14 @@ export class GoalService {
           deadline: new Date(body.deadline),
         },
       });
+      try {
+        await this.notifications.createForUser(jwt.sub, {
+          type: 'PUSH',
+          message: `Goal created: ${goal.name}`,
+        });
+      } catch (e) {
+        console.error('Failed to create goal notification', e);
+      }
       return createSuccessResponse(goal);
     } catch (error) {
       console.error(error);

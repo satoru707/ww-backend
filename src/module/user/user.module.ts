@@ -6,9 +6,10 @@ import { AuthGuard } from '../jwt.guard';
 import { RolesGuard } from '../role.guard';
 import { AuthService } from '../auth/auth.service';
 import { AuditLogModule } from '../audit_log/audit_log.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [AuditLogModule],
+  imports: [AuditLogModule, NotificationModule],
   controllers: [UserController],
   providers: [UserService, PrismaService, AuthGuard, RolesGuard, AuthService],
 })
