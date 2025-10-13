@@ -1,18 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  UseGuards,
-  Res,
-  Param,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Param } from '@nestjs/common';
 import { AuditLogService } from './audit_log.service';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
 import { ApiSecurity, ApiOperation, ApiParam } from '@nestjs/swagger';
-import type { Response } from 'express';
 
 @UseGuards(AuthGuard, RolesGuard)
 @ApiSecurity('access_token')
@@ -24,7 +15,7 @@ export class AuditLogController {
   @Roles(['admin'])
   @ApiOperation({ summary: 'Get all audit logs' })
   @Get('all_logs')
-  findAll(@Res({ passthrough: true }) res: Response) {
+  findAll() {
     return this.auditLogService.findAll();
   }
 

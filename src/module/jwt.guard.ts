@@ -2,13 +2,15 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    const token = req.cookies.access_token;
+    const token = getAccessTokenFromReq(req);
     try {
       if (!token) return false;
       if (!process.env.JWT_SECRET) return false;
@@ -19,8 +21,8 @@ export class AuthGuard implements CanActivate {
       });
       if (!user) return false;
       return true;
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return false;
     }
   }

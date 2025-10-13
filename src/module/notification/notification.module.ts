@@ -4,12 +4,11 @@ import { NotificationController } from './notification.controller';
 import { PrismaService } from 'src/prisma.service';
 import { AuthGuard } from '../jwt.guard';
 import { RolesGuard } from '../role.guard';
-  import {
-    Notification,
-    NotificationSchema,
-  } from '../../services/mongo/notification.schema';
-  import { MongooseModule } from '@nestjs/mongoose';
-
+import {
+  Notification,
+  NotificationSchema,
+} from '../../services/mongo/notification.schema';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [

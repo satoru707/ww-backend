@@ -3,7 +3,8 @@ export interface ApiResponse<T> {
   meta?: {
     pagination?: { page: number; limit: number; total: number };
     timestamp: string;
-    [key: string]: any;
+    // allow additional metadata keys but keep them typed
+    [key: string]: unknown;
   };
   errors: { message: string; code?: string }[] | null;
 }
@@ -28,4 +29,3 @@ export function createErrorResponse<T>(
     errors,
   };
 }
-

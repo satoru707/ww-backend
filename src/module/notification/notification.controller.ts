@@ -1,24 +1,17 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
   Patch,
   Param,
   Delete,
   UseGuards,
-  Response,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { NotificationService } from './notification.service';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiResponse,
-  ApiBadRequestResponse,
-  ApiOperation,
-  ApiSecurity,
-} from '@nestjs/swagger';
+import { ApiResponse, ApiOperation, ApiSecurity } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard, RolesGuard)
 @ApiSecurity('access_token')
@@ -34,7 +27,7 @@ export class NotificationController {
     description: 'Returns all notifications',
   })
   @Get()
-  findAll(@Response({ passthrough: true }) res) {
+  findAll(res: Response) {
     return this.notificationService.findAll(res);
   }
 
@@ -44,7 +37,7 @@ export class NotificationController {
     description: 'Notification marked as read',
   })
   @Patch('/read:id')
-  markAsRead(@Param('id') id: string, @Response({ passthrough: true }) res) {
+  markAsRead(@Param('id') id: string, res: Response) {
     return this.notificationService.markAsRead(id, res);
   }
 
@@ -54,7 +47,7 @@ export class NotificationController {
     description: 'All notifications marked as read',
   })
   @Patch('/read')
-  markAllAsRead(@Response({ passthrough: true }) res) {
+  markAllAsRead(res: Response) {
     return this.notificationService.markAllAsRead(res);
   }
 
@@ -64,8 +57,7 @@ export class NotificationController {
     description: 'Notification deleted',
   })
   @Delete(':id')
-  @Delete(':id')
-  delete(@Param('id') id: string, @Response({ passthrough: true }) res) {
+  delete(@Param('id') id: string, res: Response) {
     return this.notificationService.delete(id, res);
   }
 
@@ -75,7 +67,7 @@ export class NotificationController {
     description: 'All notifications deleted',
   })
   @Delete('all')
-  deleteAll(@Response({ passthrough: true }) res) {
+  deleteAll(res: Response) {
     return this.notificationService.deleteAll(res);
   }
 }

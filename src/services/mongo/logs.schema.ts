@@ -15,7 +15,8 @@ export class Logs {
   familyId?: string;
 
   @Prop({ type: Object })
-  details: any;
+  // details can be structured data or a stringified payload
+  details: Record<string, unknown> | string;
 
   @Prop({ default: 'INFO' })
   level: string;

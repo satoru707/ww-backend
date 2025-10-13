@@ -12,6 +12,8 @@ import {
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
 import crypto from 'crypto';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 
 @Injectable()
 export class FamilyService {
@@ -26,10 +28,8 @@ export class FamilyService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const user = await this.prisma.user.findFirst({
         where: { id: jwt.sub },
         include: { family: true },
@@ -50,20 +50,18 @@ export class FamilyService {
       if (!family)
         return createErrorResponse([{ message: 'User has no family' }]);
       return createSuccessResponse(family);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error fetching family' }]);
     }
   }
 
-  async create(name, res: Response) {
+  async create(name: string, res: Response) {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const family = await this.prisma.family.create({
         data: { name: name, admin_id: jwt.sub },
       });
@@ -72,12 +70,15 @@ export class FamilyService {
           type: 'PUSH',
           message: `Family created: ${family.name}`,
         });
-      } catch (e) {
-        console.error('Failed to create family notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create family notification',
+          safeErrorMessage(e),
+        );
       }
       return createSuccessResponse(family);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating Family' }]);
     }
   }
@@ -92,13 +93,13 @@ export class FamilyService {
       if (user.familyId)
         return createErrorResponse([{ message: 'User already in a family' }]);
       const nonce = crypto.randomBytes(32).toString('hex');
-      const token = await this.prisma.token.create({
+      await this.prisma.token.create({
         data: {
           token: nonce,
           type: 'FAMILY',
           family_id: familyId,
           member_id: user.id,
-          expiresAt: new Date(Date() + 24 * 60 * 60 * 1000),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       });
       await this.auth.send_mail(
@@ -116,19 +117,25 @@ export class FamilyService {
           type: 'PUSH',
           message: `You have been invited to join family ${familyName}`,
         });
-      } catch (e) {
-        console.error('Failed to create family invite notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create family invite notification',
+          safeErrorMessage(e),
+        );
       }
       // audit log
       await logEvent(this.logs, {
         userId: user.id,
         actionType: 'FAMILY_INVITE_SENT',
         level: 'INFO',
-        details: { familyId: familyId, invitedEmail: user.email },
+        details: JSON.stringify({
+          familyId: familyId,
+          invitedEmail: user.email,
+        }),
       });
       return createSuccessResponse('Email sent successfully');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error sending mail' }]);
     }
   }
@@ -160,8 +167,8 @@ export class FamilyService {
         where: { member_id: data?.member_id },
       });
       return createSuccessResponse('Join Family successful');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error joining family' }]);
     }
   }
@@ -173,8 +180,8 @@ export class FamilyService {
         data: { name: name },
       });
       return createSuccessResponse('Family name updated successfully');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error editing family' }]);
     }
   }
@@ -183,10 +190,8 @@ export class FamilyService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const user = await this.prisma.user.findUnique({
         where: { id: jwt.sub },
       });
@@ -198,8 +203,8 @@ export class FamilyService {
       });
 
       return createSuccessResponse('Left family successfully');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error joining family' }]);
     }
   }
@@ -208,10 +213,8 @@ export class FamilyService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       await this.prisma.family.delete({
         where: { id: familyId, admin_id: jwt.sub },
       });
@@ -219,18 +222,14 @@ export class FamilyService {
         where: { familyId: familyId },
         data: { familyId: null },
       });
-      await this.prisma.token.deleteMany({
-        where: { family_id: familyId },
-      });
+      await this.prisma.token.deleteMany({ where: { family_id: familyId } });
       await this.prisma.transactions.deleteMany({
         where: { familyId: familyId },
       });
-      await this.prisma.budget.deleteMany({
-        where: { familyId: familyId },
-      });
+      await this.prisma.budget.deleteMany({ where: { familyId: familyId } });
       return createSuccessResponse('Family deleted successfully');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([
         { message: 'Error deleting family or insufficient permissions' },
       ]);
@@ -241,8 +240,8 @@ export class FamilyService {
     try {
       const users = await this.prisma.family.findMany();
       return createSuccessResponse(users);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error fetching all users' }]);
     }
   }

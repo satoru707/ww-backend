@@ -10,6 +10,8 @@ import {
 } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 
 @Injectable()
 export class deptplanService {
@@ -22,10 +24,8 @@ export class deptplanService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const debtplan = await this.prisma.debtPlan.create({
         data: {
           ...body,
@@ -37,12 +37,15 @@ export class deptplanService {
           type: 'PUSH',
           message: `Debt plan created: ${debtplan.id}`,
         });
-      } catch (e) {
-        console.error('Failed to create debt plan notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create debt plan notification',
+          safeErrorMessage(e),
+        );
       }
       return createSuccessResponse(debtplan);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating debt plan' }]);
     }
   }
@@ -51,16 +54,14 @@ export class deptplanService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const debtplans = await this.prisma.debtPlan.findMany({
         where: { user_id: jwt.sub },
       });
       return createSuccessResponse(debtplans);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error finding debt plans' }]);
     }
   }
@@ -69,10 +70,8 @@ export class deptplanService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const debtplan = await this.prisma.debtPlan.findFirst({
         where: { id: debtplanId, user_id: jwt.sub },
       });
@@ -80,8 +79,8 @@ export class deptplanService {
         return createErrorResponse([{ message: 'Debt plan not found' }]);
       }
       return createSuccessResponse(debtplan);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error finding debt plan' }]);
     }
   }
@@ -94,10 +93,8 @@ export class deptplanService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
 
       const existingPlan = await this.prisma.debtPlan.findFirst({
         where: { id: id, user_id: jwt.sub },
@@ -112,8 +109,8 @@ export class deptplanService {
         data: { ...updatedeptplanDto },
       });
       return createSuccessResponse(updatedPlan);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error updating debt plan' }]);
     }
   }
@@ -122,10 +119,8 @@ export class deptplanService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
 
       const existingPlan = await this.prisma.debtPlan.findFirst({
         where: { id: id, user_id: jwt.sub },
@@ -141,8 +136,8 @@ export class deptplanService {
       return createSuccessResponse({
         message: 'Debt plan deleted successfully',
       });
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error deleting debt plan' }]);
     }
   }

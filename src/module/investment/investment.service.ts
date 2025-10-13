@@ -8,6 +8,8 @@ import {
 } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
@@ -18,17 +20,15 @@ export class InvestmentService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
 
       const investment = await this.prisma.investment.create({
         data: { ...createInvestmentDto, user_id: jwt.sub },
       });
       return createSuccessResponse(investment);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating Investment' }]);
     }
   }
@@ -37,18 +37,16 @@ export class InvestmentService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const investments = await this.prisma.investment.findMany({
         where: {
           user_id: jwt.sub,
         },
       });
       return createSuccessResponse(investments);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error getting investments' }]);
     }
   }
@@ -57,18 +55,16 @@ export class InvestmentService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const investment = await this.prisma.investment.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
       if (!investment)
         return createErrorResponse([{ message: 'Investment not found' }]);
       return createSuccessResponse(investment);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error getting investment' }]);
     }
   }
@@ -81,10 +77,8 @@ export class InvestmentService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({
         where: { id, user_id: jwt.sub },
       });
@@ -96,8 +90,8 @@ export class InvestmentService {
         data: updateInvestmentDto,
       });
       return createSuccessResponse(updatedInvestment);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error updating investment' }]);
     }
   }
@@ -106,10 +100,8 @@ export class InvestmentService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
@@ -122,8 +114,8 @@ export class InvestmentService {
       return createSuccessResponse({
         message: 'Investment deleted successfully',
       });
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error deleting investment' }]);
     }
   }

@@ -19,8 +19,8 @@ export class AuditLogService {
     try {
       await this.logsModel.create(createAuditLogDto);
       return createSuccessResponse('Log created successfully');
-    } catch (error) {
-      console.log(error);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
       return createErrorResponse([{ message: 'Error creating audit log' }]);
     }
   }
@@ -30,8 +30,8 @@ export class AuditLogService {
       const logs = await this.logsModel.find({ userId: id });
       console.log('Logs', logs);
       return createSuccessResponse(logs);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
       return createErrorResponse([{ message: 'Error finding logs' }]);
     }
   }
@@ -42,8 +42,8 @@ export class AuditLogService {
         return createErrorResponse([{ message: 'Internal Server Error' }]);
       const logs = await this.logsModel.find();
       return createSuccessResponse(logs);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
       return createErrorResponse([{ message: 'Error finding logs' }]);
     }
   }

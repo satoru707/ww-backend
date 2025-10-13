@@ -5,12 +5,14 @@ import { PrismaService } from 'src/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { AuditLogService } from '../audit_log/audit_log.service';
 import { logEvent } from 'src/common/log.helper';
+import { safeErrorMessage } from 'src/common/error.util';
 import {
   createErrorResponse,
   createSuccessResponse,
 } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
 
 @Injectable()
 export class TransactionsService {
@@ -23,10 +25,8 @@ export class TransactionsService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transaction = await this.prisma.transactions.create({
         data: {
           ...body,
@@ -37,25 +37,34 @@ export class TransactionsService {
       try {
         await this.notifications.createForUser(jwt.sub, {
           type: 'PUSH',
-          message: `New transaction recorded: ₦${transaction.amount}`,
+          message: `New transaction recorded: ₦${String(transaction.amount)}`,
         });
-      } catch (e) {
-        console.error('Failed to create transaction notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create transaction notification',
+          safeErrorMessage(e),
+        );
       }
       // audit log
       await logEvent(this.logs, {
-        userId: (jwt.sub || 'N/A') as string,
+        userId: jwt.sub || 'N/A',
         actionType: 'TRANSACTION_CREATED',
         level: 'INFO',
-        details: {
+        details: JSON.stringify({
           id: transaction.id,
           amount: transaction.amount,
           category: transaction.category,
-        },
+        }),
       });
       return createSuccessResponse(transaction);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
+      await logEvent(this.logs, {
+        userId: 'N/A',
+        actionType: 'TRANSACTION_CREATED',
+        level: 'ERROR',
+        details: safeErrorMessage(err),
+      });
       return createErrorResponse([{ message: 'Error creating transaction' }]);
     }
   }
@@ -64,16 +73,20 @@ export class TransactionsService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transactions = await this.prisma.transactions.findMany({
         where: { user_id: jwt.sub, familyId: null },
       });
       return createSuccessResponse(transactions);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
+      await logEvent(this.logs, {
+        userId: 'N/A',
+        actionType: 'TRANSACTION_FETCH',
+        level: 'ERROR',
+        details: safeErrorMessage(err),
+      });
       return createErrorResponse([{ message: 'Error finding transactions' }]);
     }
   }
@@ -82,10 +95,8 @@ export class TransactionsService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transaction = await this.prisma.transactions.findFirst({
         where: {
           user_id: jwt.sub,
@@ -94,8 +105,14 @@ export class TransactionsService {
       });
 
       return createSuccessResponse(transaction);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
+      await logEvent(this.logs, {
+        userId: 'N/A',
+        actionType: 'TRANSACTION_FETCH',
+        level: 'ERROR',
+        details: safeErrorMessage(err),
+      });
       return createErrorResponse([{ message: 'Error finding transaction' }]);
     }
   }
@@ -104,17 +121,21 @@ export class TransactionsService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       await this.prisma.transactions.delete({
         where: { id: id, user_id: jwt.sub },
       });
 
       return createSuccessResponse('Success deleting transaction');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
+      await logEvent(this.logs, {
+        userId: 'N/A',
+        actionType: 'TRANSACTION_DELETE',
+        level: 'ERROR',
+        details: safeErrorMessage(err),
+      });
       return createErrorResponse([{ message: 'Error deleting transaction' }]);
     }
   }
@@ -124,10 +145,8 @@ export class TransactionsService {
       console.log('Testing');
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const user = await this.prisma.user.findUnique({
         where: { id: jwt.sub },
         include: { family: true },
@@ -153,8 +172,14 @@ export class TransactionsService {
       }
 
       return createSuccessResponse(transactions);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
+      await logEvent(this.logs, {
+        userId: 'N/A',
+        actionType: 'TRANSACTION_CREATED',
+        level: 'ERROR',
+        details: safeErrorMessage(err),
+      });
       return createErrorResponse([{ message: 'Error creating transaction' }]);
     }
   }
@@ -163,10 +188,8 @@ export class TransactionsService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Interna Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transaction = await this.prisma.transactions.create({
         data: {
           ...body,
@@ -176,24 +199,28 @@ export class TransactionsService {
       try {
         await this.notifications.createForUser(jwt.sub, {
           type: 'PUSH',
-          message: `New family transaction: ₦${transaction.amount}`,
+          message: `New family transaction: ₦${String(transaction.amount)}`,
         });
-      } catch (e) {
-        console.error('Failed to create family transaction notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create family transaction notification',
+          safeErrorMessage(e),
+        );
       }
       await logEvent(this.logs, {
-        userId: (jwt.sub || 'N/A') as string,
+        userId: jwt.sub || 'N/A',
         actionType: 'TRANSACTION_CREATED',
         level: 'INFO',
-        details: {
+        details: JSON.stringify({
           id: transaction.id,
           amount: transaction.amount,
           familyId: transaction.familyId,
-        },
+        }),
       });
+
       return createSuccessResponse(transaction);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating transaction' }]);
     }
   }

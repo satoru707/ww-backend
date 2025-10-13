@@ -15,6 +15,11 @@ import { sign, verify } from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import { jwtPayload } from 'src/types/types';
+import {
+  getAccessTokenFromReq,
+  getRefreshTokenFromReq,
+} from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 import { AuditLogService } from '../audit_log/audit_log.service';
 import { NotificationService } from '../notification/notification.service';
 import { logEvent } from 'src/common/log.helper';
@@ -73,15 +78,15 @@ export class AuthService {
         userId: user.id,
         actionType: 'SIGNUP',
         level: 'INFO',
-        details: createAuthDto,
+        details: JSON.stringify(createAuthDto),
       });
       return createSuccessResponse('Verify Email');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         actionType: 'USER_SIGNUP',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
         userId: createAuthDto.email,
       });
       return createErrorResponse([{ message: 'Error creating account' }]);
@@ -155,18 +160,18 @@ export class AuthService {
           userId: userExists.id,
           actionType: 'LOGIN',
           level: 'INFO',
-          details: checkAuthDto,
+          details: JSON.stringify(checkAuthDto),
         },
         res.req,
       );
       return createSuccessResponse('Login successful');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: checkAuthDto.email || 'N/A',
         actionType: 'LOGIN',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error logging in' }]);
     }
@@ -174,15 +179,31 @@ export class AuthService {
 
   async logout(res: Response): Promise<ApiResponse<string>> {
     try {
-      const token = res.req.cookies.access_token;
+      const token = getAccessTokenFromReq(res.req);
       let id;
       if (token) {
         if (process.env.JWT_SECRET) {
-          const decoded = verify(token, process.env.JWT_SECRET) as jwtPayload;
-          id = decoded.sub;
-          await this.prisma.token.delete({
-            where: { user_id_type: { user_id: decoded.sub, type: 'REFRESH' } },
-          });
+          const decodedUnknown = verify(
+            token ?? '',
+            process.env.JWT_SECRET,
+          ) as unknown;
+          if (
+            decodedUnknown &&
+            typeof decodedUnknown === 'object' &&
+            'sub' in decodedUnknown
+          ) {
+            // runtime-safe extraction
+            const subVal = (decodedUnknown as Record<string, unknown>)['sub'];
+            id = String(subVal ?? '');
+            await this.prisma.token.delete({
+              where: {
+                user_id_type: {
+                  user_id: String(subVal ?? ''),
+                  type: 'REFRESH',
+                },
+              },
+            });
+          }
         }
       }
       res.clearCookie('access_token');
@@ -198,7 +219,7 @@ export class AuthService {
         res.req,
       );
       return createSuccessResponse('Logged out successfully');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(
         this.logs,
@@ -206,7 +227,7 @@ export class AuthService {
           userId: 'N/A',
           actionType: 'LOGOUT',
           level: 'ERROR',
-          details: error?.message || String(error),
+          details: safeErrorMessage(error),
         },
         res.req,
       );
@@ -254,13 +275,13 @@ export class AuthService {
         details: 'Email link verified',
       });
       return createSuccessResponse('Email verified');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'EMAIL_VERIFICATION',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Invalid email link' }]);
     }
@@ -268,7 +289,7 @@ export class AuthService {
 
   async refresh(res: Response): Promise<ApiResponse<string>> {
     try {
-      const refresh = res.req.cookies.refresh_token;
+      const refresh = getRefreshTokenFromReq(res.req);
       if (!refresh)
         return createErrorResponse([{ message: 'No refresh token' }]);
       const valid_token = await this.prisma.token.findFirst({
@@ -296,13 +317,13 @@ export class AuthService {
         details: 'Tokens refreshed',
       });
       return createSuccessResponse('Tokens refreshed');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'TOKEN_REFRESH',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error returning access token' }]);
     }
@@ -312,11 +333,12 @@ export class AuthService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      console.log(res.req.cookies.access_token);
+      const tokenStr = getAccessTokenFromReq(res.req);
+      console.log(tokenStr);
       const token = verify(
-        res.req.cookies.access_token,
+        tokenStr ?? '',
         process.env.JWT_SECRET,
-      ) as jwtPayload;
+      ) as unknown as jwtPayload;
       const user_id = token.sub;
       const user = await this.prisma.user.findFirst({
         where: { id: user_id },
@@ -332,7 +354,10 @@ export class AuthService {
         where: { id: user_id },
         data: { is2FAEnabled: true, two_factor_secret: secret.base32 },
       });
-      const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
+      const qr = qrcode as unknown as {
+        toDataURL: (s: string) => Promise<string>;
+      };
+      const qrCodeUrl = await qr.toDataURL(String(secret.otpauth_url));
       await logEvent(this.logs, {
         userId: user_id,
         actionType: 'ENABLE_2FA',
@@ -340,13 +365,13 @@ export class AuthService {
         details: '2FA enabled',
       });
       return createSuccessResponse(qrCodeUrl);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'ENABLE_2FA',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error enabling 2FA' }]);
     }
@@ -392,13 +417,13 @@ export class AuthService {
         details: 'Login successful',
       });
       return createSuccessResponse('Login successful');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'VERIFY_2FA',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error' }]);
     }
@@ -433,7 +458,7 @@ export class AuthService {
         email: string;
         name: string;
       };
-      var user = await this.prisma.user.findFirst({ where: { email } });
+      let user = await this.prisma.user.findFirst({ where: { email } });
       if (!user) {
         user = await this.prisma.user.create({
           data: {
@@ -460,13 +485,13 @@ export class AuthService {
         details: 'Google login successful',
       });
       return createSuccessResponse('Google login successful');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'GOOGLE_LOGIN',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Google Error' }]);
     }
@@ -503,13 +528,13 @@ export class AuthService {
         details: 'Email sent',
       });
       return createSuccessResponse('Email sent');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'REQUEST_RESET',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error requesting reset' }]);
     }
@@ -546,19 +571,11 @@ export class AuthService {
           },
         });
       }
-      // Structured audit log (non-blocking)
       await logEvent(this.logs, {
-        userId: (token.user_id || 'N/A') as string,
+        userId: token.user_id || 'N/A',
         actionType: 'PASSWORD_RESET',
         level: 'INFO',
-        details: { message: 'Password reset successful' },
-      });
-      // Structured audit log (non-blocking)
-      await logEvent(this.logs, {
-        userId: (token.user_id || 'N/A') as string,
-        actionType: 'PASSWORD_RESET',
-        level: 'INFO',
-        details: { message: 'Password reset successful' },
+        details: JSON.stringify('Password reset successful'),
       });
 
       // create in-app notification for password reset
@@ -573,13 +590,13 @@ export class AuthService {
       }
 
       return createSuccessResponse('Password reset successfull');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       await logEvent(this.logs, {
         userId: 'N/A',
         actionType: 'PASSWORD_RESET',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(error),
       });
       return createErrorResponse([{ message: 'Error resetting password' }]);
     }
@@ -637,7 +654,7 @@ export class AuthService {
         maxAge: 48 * 60 * 60 * 1000,
         sameSite: 'strict',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
     }
   }
@@ -773,7 +790,7 @@ export class AuthService {
   `;
       }
 
-      let transporter = nodemailer.createTransport({
+      const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: process.env.EMAIL_USER,
@@ -781,22 +798,32 @@ export class AuthService {
         },
       });
 
-      let mailOptions = {
+      const mailOptions = {
         from: process.env.EMAIL_USER,
         to: user.email,
         subject: title,
         html: mail,
       };
-    } catch (error) {
-      console.error(error);
+
+      try {
+        const info: unknown = await (
+          transporter as unknown as { sendMail: (m: any) => Promise<unknown> }
+        ).sendMail(mailOptions);
+        // return a structure compatible with existing callers that check sent?.errors
+        return { errors: [], info };
+      } catch (sendErr: unknown) {
+        console.error('Failed to send email', safeErrorMessage(sendErr));
+        return { errors: [{ message: safeErrorMessage(sendErr) }] };
+      }
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       await logEvent(this.logs, {
         userId: user.email || 'N/A',
         actionType: 'SEND_EMAIL',
         level: 'ERROR',
-        details: error?.message || String(error),
+        details: safeErrorMessage(err),
       });
-      return createErrorResponse([{ message: 'Error sending mail' }]);
+      return { errors: [{ message: safeErrorMessage(err) }] };
     }
   }
 }
-

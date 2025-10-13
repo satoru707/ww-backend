@@ -1,16 +1,8 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+// import { CreatePaymentDto } from './dto/create-payment.dto';
 import { AuthGuard } from '../jwt.guard';
-import { Roles } from '../role.decorator';
+// import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
 
 // create payment, get all, get one, connect third party payment api

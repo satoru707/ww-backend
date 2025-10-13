@@ -8,6 +8,8 @@ import {
 } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
+import { safeErrorMessage } from 'src/common/error.util';
 import { PrismaService } from 'src/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 
@@ -21,10 +23,8 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budget = await this.prisma.budget.create({
         data: { ...createBudget, user_id: jwt.sub },
       });
@@ -33,12 +33,15 @@ export class BudgetService {
           type: 'PUSH',
           message: `Budget created: ${budget.category}`,
         });
-      } catch (e) {
-        console.error('Failed to create budget notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create budget notification',
+          safeErrorMessage(e),
+        );
       }
       return createSuccessResponse(budget);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating Budget' }]);
     }
   }
@@ -47,18 +50,16 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budgets = await this.prisma.budget.findMany({
         where: {
           user_id: jwt.sub,
         },
       });
       return createSuccessResponse(budgets);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error getting budgets' }]);
     }
   }
@@ -67,18 +68,16 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
       if (!budget)
         return createErrorResponse([{ message: 'Budget not found' }]);
       return createSuccessResponse(budget);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error getting budget' }]);
     }
   }
@@ -87,10 +86,8 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
@@ -101,8 +98,8 @@ export class BudgetService {
         data: updateBudgetDto,
       });
       return createSuccessResponse(updatedBudget);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error updating budget' }]);
     }
   }
@@ -111,10 +108,8 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budget = await this.prisma.budget.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
@@ -124,8 +119,8 @@ export class BudgetService {
         where: { id: id },
       });
       return createSuccessResponse('Budget deleted successfully');
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error deleting budget' }]);
     }
   }
@@ -138,10 +133,8 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budget = await this.prisma.budget.create({
         data: { ...createBudgetDto, familyId: familyId, user_id: jwt.sub },
       });
@@ -150,12 +143,15 @@ export class BudgetService {
           type: 'PUSH',
           message: `Family budget created: ${budget.category}`,
         });
-      } catch (e) {
-        console.error('Failed to create family budget notification', e);
+      } catch (e: unknown) {
+        console.error(
+          'Failed to create family budget notification',
+          safeErrorMessage(e),
+        );
       }
       return createSuccessResponse(budget);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error creating Family Budget' }]);
     }
   }
@@ -164,18 +160,16 @@ export class BudgetService {
     try {
       if (!process.env.JWT_SECRET)
         return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const jwt = verify(
-        res.req.cookies.access_token,
-        process.env.JWT_SECRET,
-      ) as jwtPayload;
+      const token = getAccessTokenFromReq(res.req);
+      const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const budgets = await this.prisma.budget.findMany({
         where: {
           familyId: familyId,
         },
       });
       return createSuccessResponse(budgets);
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(safeErrorMessage(err));
       return createErrorResponse([{ message: 'Error getting budgets' }]);
     }
   }

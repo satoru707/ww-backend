@@ -3,19 +3,25 @@ import { verify } from 'jsonwebtoken';
 import { Reflector } from '@nestjs/core';
 import { Roles } from './role.decorator';
 import { jwtPayload } from 'src/types/types';
-import { log } from 'console';
+import { getAccessTokenFromReq } from 'src/common/cookie.util';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     try {
-      const roles = this.reflector.get(Roles, context.getHandler());
+      const roles = this.reflector.get(
+        Roles,
+        context.getHandler(),
+      ) as unknown as string[];
       const req = context.switchToHttp().getRequest();
-      const token = req.cookies.access_token;
+      const t = getAccessTokenFromReq(req);
       if (!process.env.JWT_SECRET) return false;
-      const payload = verify(token, process.env.JWT_SECRET) as jwtPayload;
+      const payload = verify(
+        t ?? '',
+        process.env.JWT_SECRET,
+      ) as unknown as jwtPayload;
       console.log('Roles', roles);
       for (const role of roles) {
         if (role.toLowerCase() == payload.role.toLowerCase()) {
@@ -23,8 +29,8 @@ export class RolesGuard implements CanActivate {
         }
       }
       return false;
-    } catch (error) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
       return false;
     }
   }

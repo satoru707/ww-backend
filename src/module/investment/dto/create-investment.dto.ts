@@ -1,4 +1,4 @@
-import { IsDate, IsString, IsNumber } from 'class-validator';
+import { IsString, IsNumber } from 'class-validator';
 
 export class CreateInvestmentDto {
   @IsString()
