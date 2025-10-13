@@ -46,7 +46,6 @@ export class UserService {
           investments: true,
           payments: true,
           debt_plans: true,
-          notifications: true,
         },
       });
       return createSuccessResponse(user);
@@ -215,7 +214,6 @@ export class UserService {
           investments: true,
           payments: true,
           debt_plans: true,
-          notifications: true,
         },
       });
       if (!user) return createErrorResponse([{ message: 'User not found' }]);

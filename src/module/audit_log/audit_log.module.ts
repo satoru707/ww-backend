@@ -5,12 +5,11 @@ import { AuditLogController } from './audit_log.controller';
 import { AuthGuard } from '../jwt.guard';
 import { RolesGuard } from '../role.guard';
 import { PrismaService } from 'src/prisma.service';
-import { Logs, LogsSchema } from './mongo/mongo.schema';
+import { Logs, LogsSchema } from '../../services/mongo/logs.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Logs.name, schema: LogsSchema }]),
-    MongooseModule.forRoot(process.env.MONGO_URI || ''),
   ],
   controllers: [AuditLogController],
   providers: [AuditLogService, AuthGuard, RolesGuard, PrismaService],

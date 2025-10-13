@@ -21,7 +21,6 @@ import {
   ApiOperation,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { error } from 'console';
 
 // create , get all, get one, edit investment, delete
 @UseGuards(AuthGuard, RolesGuard)

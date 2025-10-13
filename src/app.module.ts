@@ -20,7 +20,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
     AuthModule,
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     UserModule,
     FamilyModule,
     GoalModule,
@@ -31,7 +31,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
     deptplanModule,
     NotificationModule,
     AuditLogModule,
-    MongooseModule.forRoot('mongodb://localhost:27017/ww_audit_logs'),
+    MongooseModule.forRoot(
+      process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/wealthwave',
+    ),
     ThrottlerModule.forRoot({
       throttlers: [
         {
