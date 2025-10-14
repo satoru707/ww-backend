@@ -323,5 +323,3 @@ MIT License. See LICENSE.
 
 🌟 Build the future of finance with WealthWave!
 Join us on GitHub to contribute or report issues. Let’s make money management awesome 💸🚀
-
-```
