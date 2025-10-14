@@ -1,25 +1,12 @@
-import {
-  Controller,
-  Get,
-  Body,
-  Patch,
-  Delete,
-  UseGuards,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Body, Patch, Delete, UseGuards, Res, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthService } from '../auth/auth.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiOperation,
-  ApiResponse,
-  ApiBadRequestResponse,
-  ApiSecurity,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiBadRequestResponse, ApiSecurity, ApiBody } from '@nestjs/swagger';
+import { UserAwareCacheInterceptor } from '../../user-aware-cache.interceptor';
 import type { Response } from 'express';
 
 @Controller('user')
@@ -29,10 +16,11 @@ import type { Response } from 'express';
 export class UserController {
   constructor(
     private readonly userService: UserService,
-    private authService: AuthService,
+    private authService: AuthService
   ) {}
 
   @Get('me')
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Roles(['user', 'family_admin', 'admin'])
   @ApiOperation({
     summary: 'Get current user details',
@@ -126,7 +114,7 @@ export class UserController {
   update(
     @Res({ passthrough: true }) res: Response,
     @Body()
-    updateUserDto: UpdateUserDto,
+    updateUserDto: UpdateUserDto
   ) {
     return this.userService.update(res, updateUserDto);
   }
@@ -183,12 +171,11 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Roles(['user', 'family_admin'])
   @Delete()
+  @Roles(['user', 'family_admin'])
   @ApiOperation({
     summary: 'Delete current user account',
-    description:
-      'Delete the account of the currently authenticated user. This action is irreversible.',
+    description: 'Delete the account of the currently authenticated user. This action is irreversible.',
   })
   @ApiResponse({
     status: 200,
@@ -214,6 +201,7 @@ export class UserController {
     return this.userService.remove(res);
   }
 
+  @Get('/enable_2fa')
   @Roles(['user', 'family_admin'])
   @ApiOperation({
     summary: 'Enable two-factor authentication',
@@ -243,16 +231,15 @@ export class UserController {
       },
     },
   })
-  @Get('/enable_2fa')
   enable(@Res({ passthrough: true }) res) {
     return this.authService.enable_two_factor_auth(res);
   }
 
+  @Get('export')
   @Roles(['user', 'family_admin'])
   @ApiOperation({
     summary: 'Export user data',
-    description:
-      'Export all data associated with the current user in JSON format.',
+    description: 'Export all data associated with the current user in JSON format.',
   })
   @ApiResponse({
     description: 'User data exported successfully.',
@@ -275,7 +262,6 @@ export class UserController {
       },
     },
   })
-  @Get('export')
   exportUserData(@Res({ passthrough: true }) res) {
     return this.userService.exportUserData(res);
   }

@@ -1,13 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { Response } from 'express';
 import { PrismaService } from 'src/prisma.service';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { NotificationService } from '../notification/notification.service';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from 'src/common/response.util';
+import { createErrorResponse, createSuccessResponse } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
 import { getAccessTokenFromReq } from 'src/common/cookie.util';
@@ -18,13 +16,16 @@ export class GoalService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
   async create(body: CreateGoalDto, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
+
+      // Clear user's goal caches
+      await this.cacheManager.del(`${jwt.sub}:/goal`);
       const goal = await this.prisma.goals.create({
         data: {
           name: body.name,
@@ -40,10 +41,7 @@ export class GoalService {
           message: `Goal created: ${goal.name}`,
         });
       } catch (e: unknown) {
-        console.error(
-          'Failed to create goal notification',
-          safeErrorMessage(e),
-        );
+        console.error('Failed to create goal notification', safeErrorMessage(e));
       }
       return createSuccessResponse(goal);
     } catch (err: unknown) {
@@ -54,8 +52,7 @@ export class GoalService {
 
   async findAll(res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const goals = await this.prisma.goals.findMany({
@@ -72,8 +69,7 @@ export class GoalService {
 
   async findOne(id: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const goal = await this.prisma.goals.findFirst({
@@ -91,10 +87,13 @@ export class GoalService {
 
   async update(id: string, updateGoal: UpdateGoalDto, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
+
+      // Clear user's goal caches
+      await this.cacheManager.del(`${jwt.sub}:/goal`);
+      await this.cacheManager.del(`${jwt.sub}:/goal/${id}`);
       const goal = await this.prisma.goals.update({
         where: {
           id: id,
@@ -111,8 +110,7 @@ export class GoalService {
 
   async remove(id: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       console.log(jwt.sub, id);
@@ -125,9 +123,7 @@ export class GoalService {
       return createSuccessResponse('Deleted successfully');
     } catch (err: unknown) {
       console.error(safeErrorMessage(err));
-      return createErrorResponse([
-        { message: 'Error deleting goal or goal not found' },
-      ]);
+      return createErrorResponse([{ message: 'Error deleting goal or goal not found' }]);
     }
   }
 }

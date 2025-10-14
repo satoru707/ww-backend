@@ -48,8 +48,7 @@ export class AuthController {
   @Post('login')
   @ApiOperation({
     summary: 'Log in a user',
-    description:
-      'Authenticates a user, sets HTTP-only cookies (access_token, refresh_token), or prompts for 2FA.',
+    description: 'Authenticates a user, sets HTTP-only cookies (access_token, refresh_token), or prompts for 2FA.',
   })
   @ApiBody({ type: LoginDto, description: 'User login credentials' })
   @ApiResponse({
@@ -81,8 +80,7 @@ export class AuthController {
   @Post('google')
   @ApiOperation({
     summary: 'Google OAuth login',
-    description:
-      'Authenticates a user via Google OAuth, creates a user if new, and sets tokens or prompts for 2FA.',
+    description: 'Authenticates a user via Google OAuth, creates a user if new, and sets tokens or prompts for 2FA.',
   })
   @ApiBody({
     schema: { example: { code: 'your_google_oauth_code' } },
@@ -108,10 +106,7 @@ export class AuthController {
 
     schema: { example: { errors: [{ message: 'Google Error' }] } },
   })
-  google(
-    @Body() body: { code: string },
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  google(@Body() body: { code: string }, @Res({ passthrough: true }) res: Response) {
     return this.authService.google(body.code, res);
   }
 
@@ -142,8 +137,7 @@ export class AuthController {
   @Get('refresh')
   @ApiOperation({
     summary: 'Refresh access token',
-    description:
-      'Refreshes the access token using a refresh token stored in cookies.',
+    description: 'Refreshes the access token using a refresh token stored in cookies.',
   })
   @ApiResponse({
     status: 200,
@@ -190,10 +184,7 @@ export class AuthController {
 
     schema: { example: { errors: [{ message: 'Error' }] } },
   })
-  verify2FA(
-    @Body() body: { user_email: string; code: string },
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  verify2FA(@Body() body: { user_email: string; code: string }, @Res({ passthrough: true }) res: Response) {
     return this.authService.verify_2fa(body.user_email, body.code, res);
   }
 
@@ -256,8 +247,7 @@ export class AuthController {
   @Get('logout')
   @ApiOperation({
     summary: 'Log out a user',
-    description:
-      'Clears access and refresh tokens from cookies and deletes refresh token from database.',
+    description: 'Clears access and refresh tokens from cookies and deletes refresh token from database.',
   })
   @ApiResponse({
     status: 200,

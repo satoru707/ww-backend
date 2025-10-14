@@ -8,9 +8,7 @@ import { PrismaService } from 'src/prisma.service';
 import { Logs, LogsSchema } from '../../services/mongo/logs.schema';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Logs.name, schema: LogsSchema }]),
-  ],
+  imports: [MongooseModule.forFeature([{ name: Logs.name, schema: LogsSchema }])],
   controllers: [AuditLogController],
   providers: [AuditLogService, AuthGuard, RolesGuard, PrismaService],
   exports: [AuditLogService],

@@ -16,6 +16,10 @@ import { NotificationModule } from './module/notification/notification.module';
 import { deptplanModule } from './module/debtplan/debit_plan.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { UserAwareCacheInterceptor } from './user-aware-cache.interceptor';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -31,19 +35,24 @@ import { ThrottlerModule } from '@nestjs/throttler';
     deptplanModule,
     NotificationModule,
     AuditLogModule,
-    MongooseModule.forRoot(
-      process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/wealthwave',
-    ),
+    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/wealthwave'),
     ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60000,
-          limit: 10,
-        },
-      ],
+      throttlers: [{ ttl: 60000, limit: 10 }],
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: async () => ({
+        store: await redisStore({
+          socket: {
+            host: process.env.REDIS_HOST || '127.0.0.1',
+            port: Number(process.env.REDIS_PORT) || 6379,
+          },
+          ttl: 60 * 10,
+        }),
+      }),
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService, PrismaService, { provide: APP_INTERCEPTOR, useClass: UserAwareCacheInterceptor }],
 })
 export class AppModule {}

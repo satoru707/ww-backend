@@ -1,11 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { Response } from 'express';
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from 'src/common/response.util';
+import { createSuccessResponse, createErrorResponse } from 'src/common/response.util';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
 import { getAccessTokenFromReq } from 'src/common/cookie.util';
@@ -14,15 +12,19 @@ import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class InvestmentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
+  ) {}
 
   async create(createInvestmentDto: CreateInvestmentDto, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
 
+      // Clear the user's investment caches
+      await this.cacheManager.del(`${jwt.sub}:/investment`);
       const investment = await this.prisma.investment.create({
         data: { ...createInvestmentDto, user_id: jwt.sub },
       });
@@ -35,8 +37,7 @@ export class InvestmentService {
 
   async findAll(res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const investments = await this.prisma.investment.findMany({
@@ -53,15 +54,13 @@ export class InvestmentService {
 
   async findOne(id: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const investment = await this.prisma.investment.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
-      if (!investment)
-        return createErrorResponse([{ message: 'Investment not found' }]);
+      if (!investment) return createErrorResponse([{ message: 'Investment not found' }]);
       return createSuccessResponse(investment);
     } catch (err: unknown) {
       console.error(safeErrorMessage(err));
@@ -69,21 +68,19 @@ export class InvestmentService {
     }
   }
 
-  async update(
-    id: string,
-    updateInvestmentDto: UpdateInvestmentDto,
-    res: Response,
-  ) {
+  async update(id: string, updateInvestmentDto: UpdateInvestmentDto, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
+
+      // Clear the user's investment caches
+      await this.cacheManager.del(`${jwt.sub}:/investment`);
+      await this.cacheManager.del(`${jwt.sub}:/investment/${id}`);
       const existingInvestment = await this.prisma.investment.findFirst({
         where: { id, user_id: jwt.sub },
       });
-      if (!existingInvestment)
-        return createErrorResponse([{ message: 'Investment not found' }]);
+      if (!existingInvestment) return createErrorResponse([{ message: 'Investment not found' }]);
 
       const updatedInvestment = await this.prisma.investment.update({
         where: { id },
@@ -98,15 +95,13 @@ export class InvestmentService {
 
   async remove(id: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const existingInvestment = await this.prisma.investment.findFirst({
         where: { id: id, user_id: jwt.sub },
       });
-      if (!existingInvestment)
-        return createErrorResponse([{ message: 'Investment not found' }]);
+      if (!existingInvestment) return createErrorResponse([{ message: 'Investment not found' }]);
 
       await this.prisma.investment.delete({
         where: { id },

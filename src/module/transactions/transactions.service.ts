@@ -1,15 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Response } from 'express';
 import { PrismaService } from 'src/prisma.service';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { NotificationService } from '../notification/notification.service';
 import { AuditLogService } from '../audit_log/audit_log.service';
 import { logEvent } from 'src/common/log.helper';
 import { safeErrorMessage } from 'src/common/error.util';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from 'src/common/response.util';
+import { createErrorResponse, createSuccessResponse } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
 import { getAccessTokenFromReq } from 'src/common/cookie.util';
@@ -20,13 +18,17 @@ export class TransactionsService {
     private prisma: PrismaService,
     private notifications: NotificationService,
     private logs: AuditLogService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
   async create(body: CreateTransactionDto, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
+
+      // Clear user's transaction caches
+      await this.cacheManager.del(`${jwt.sub}:/transactions`);
+      await this.cacheManager.del(`${jwt.sub}:/transactions/family`);
       const transaction = await this.prisma.transactions.create({
         data: {
           ...body,
@@ -40,10 +42,7 @@ export class TransactionsService {
           message: `New transaction recorded: ₦${String(transaction.amount)}`,
         });
       } catch (e: unknown) {
-        console.error(
-          'Failed to create transaction notification',
-          safeErrorMessage(e),
-        );
+        console.error('Failed to create transaction notification', safeErrorMessage(e));
       }
       // audit log
       await logEvent(this.logs, {
@@ -71,8 +70,7 @@ export class TransactionsService {
 
   async findAll(res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transactions = await this.prisma.transactions.findMany({
@@ -93,8 +91,7 @@ export class TransactionsService {
 
   async findOne(transactionId: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transaction = await this.prisma.transactions.findFirst({
@@ -119,8 +116,7 @@ export class TransactionsService {
 
   async remove(id: string, res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       await this.prisma.transactions.delete({
@@ -143,8 +139,7 @@ export class TransactionsService {
   async findFamTransaction(res: Response) {
     try {
       console.log('Testing');
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const user = await this.prisma.user.findUnique({
@@ -152,10 +147,7 @@ export class TransactionsService {
         include: { family: true },
       });
 
-      if (!user?.familyId && user?.family)
-        return createErrorResponse([
-          { message: 'User does not belong to a family' },
-        ]);
+      if (!user?.familyId && user?.family) return createErrorResponse([{ message: 'User does not belong to a family' }]);
       let transactions;
       if (user?.role == 'FAMILY_ADMIN' && user.family) {
         transactions = await this.prisma.transactions.findMany({
@@ -186,8 +178,7 @@ export class TransactionsService {
 
   async createFamily(res: Response, body: CreateTransactionDto) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Interna Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Interna Server Error' }]);
       const token = getAccessTokenFromReq(res.req);
       const jwt = verify(token ?? '', process.env.JWT_SECRET) as jwtPayload;
       const transaction = await this.prisma.transactions.create({
@@ -202,10 +193,7 @@ export class TransactionsService {
           message: `New family transaction: ₦${String(transaction.amount)}`,
         });
       } catch (e: unknown) {
-        console.error(
-          'Failed to create family transaction notification',
-          safeErrorMessage(e),
-        );
+        console.error('Failed to create family transaction notification', safeErrorMessage(e));
       }
       await logEvent(this.logs, {
         userId: jwt.sub || 'N/A',

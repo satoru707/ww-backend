@@ -11,11 +11,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     abortOnError: false,
     logger: new ConsoleLogger({ json: true, colors: true }),
-    // ['error', 'warn'],
   });
   app.use(helmet());
-  // cookie-parser's exported value can be typed differently depending on TS config.
-  // Narrow it to a factory returning an Express RequestHandler so ESLint/TS accept the call.
   const cookieParserFactory = cookieParser as unknown as () => RequestHandler;
   app.use(cookieParserFactory());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));

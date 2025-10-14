@@ -1,25 +1,11 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Delete,
-  UseGuards,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Res, UseInterceptors } from '@nestjs/common';
+import { UserAwareCacheInterceptor } from '../../user-aware-cache.interceptor';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiResponse,
-  ApiOperation,
-  ApiSecurity,
-  ApiBadRequestResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiResponse, ApiOperation, ApiSecurity, ApiBadRequestResponse, ApiParam } from '@nestjs/swagger';
 
 @Controller('transactions')
 @ApiSecurity('access_token')
@@ -29,8 +15,7 @@ export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
   @ApiOperation({
     summary: 'Create a transaction',
-    description:
-      'Create a transaction for a user. Accessible by users with roles user and family_admin.',
+    description: 'Create a transaction for a user. Accessible by users with roles user and family_admin.',
   })
   @ApiResponse({
     status: 201,
@@ -63,17 +48,13 @@ export class TransactionsController {
   })
   @Roles(['user', 'family_admin'])
   @Post()
-  create(
-    @Body() createTransaction: CreateTransactionDto,
-    @Res({ passthrough: true }) res,
-  ) {
+  create(@Body() createTransaction: CreateTransactionDto, @Res({ passthrough: true }) res) {
     return this.transactionsService.create(createTransaction, res);
   }
 
   @ApiOperation({
     summary: 'Get all transactions',
-    description:
-      'Retrieve all transactions for the authenticated user. Accessible by users with roles user and family_admin.',
+    description: 'Retrieve all transactions for the authenticated user. Accessible by users with roles user and family_admin.',
   })
   @ApiResponse({
     status: 200,
@@ -107,6 +88,7 @@ export class TransactionsController {
     },
   })
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get()
   findAll(@Res({ passthrough: true }) res) {
     return this.transactionsService.findAll(res);
@@ -114,8 +96,7 @@ export class TransactionsController {
 
   @ApiOperation({
     summary: 'Get all family transactions',
-    description:
-      'Retrieve all family transactions for the authenticated user. Accessible by users with roles user and family_admin.',
+    description: 'Retrieve all family transactions for the authenticated user. Accessible by users with roles user and family_admin.',
   })
   @ApiResponse({
     status: 200,
@@ -150,6 +131,7 @@ export class TransactionsController {
     },
   })
   @Roles(['family_admin', 'user'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get('family')
   findAllFam(@Res({ passthrough: true }) res) {
     return this.transactionsService.findFamTransaction(res);
@@ -157,8 +139,7 @@ export class TransactionsController {
 
   @ApiOperation({
     summary: 'Get a transaction by ID',
-    description:
-      'Retrieve a specific transaction by its ID. Accessible by users with roles user and family_admin.',
+    description: 'Retrieve a specific transaction by its ID. Accessible by users with roles user and family_admin.',
   })
   @ApiParam({ name: 'id', required: true, description: 'Transaction ID' })
   @ApiResponse({
@@ -191,6 +172,7 @@ export class TransactionsController {
     },
   })
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get(':id')
   findOne(@Param() param: { id: string }, @Res({ passthrough: true }) res) {
     return this.transactionsService.findOne(param.id, res);
@@ -198,8 +180,7 @@ export class TransactionsController {
 
   @ApiOperation({
     summary: 'Delete a transaction by ID',
-    description:
-      'Delete a specific transaction by its ID. Accessible by users with roles user and family_admin.',
+    description: 'Delete a specific transaction by its ID. Accessible by users with roles user and family_admin.',
   })
   @ApiParam({ name: 'id', required: true, description: 'Transaction ID' })
   @ApiResponse({
@@ -239,8 +220,7 @@ export class TransactionsController {
 
   @ApiOperation({
     summary: 'Create a family transaction',
-    description:
-      'Create a family transaction for a user. Accessible by users with role family_admin only.',
+    description: 'Create a family transaction for a user. Accessible by users with role family_admin only.',
   })
   @ApiResponse({
     status: 201,
@@ -274,10 +254,7 @@ export class TransactionsController {
   })
   @Roles(['family_admin'])
   @Post('family')
-  createFam(
-    @Res({ passthrough: true }) res,
-    @Body() body: CreateTransactionDto,
-  ) {
+  createFam(@Res({ passthrough: true }) res, @Body() body: CreateTransactionDto) {
     return this.transactionsService.createFamily(res, body);
   }
 }

@@ -1,26 +1,12 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Response,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Response, UseInterceptors } from '@nestjs/common';
 import { BudgetService } from './budget.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiResponse,
-  ApiSecurity,
-  ApiOperation,
-  ApiBadRequestResponse,
-} from '@nestjs/swagger';
+import { UserAwareCacheInterceptor } from '../../user-aware-cache.interceptor';
+import { ApiResponse, ApiSecurity, ApiOperation, ApiBadRequestResponse } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard, RolesGuard)
 @ApiSecurity('access_token')
@@ -56,10 +42,7 @@ export class BudgetController {
   })
   @Roles(['user', 'family_admin'])
   @Post()
-  create(
-    @Body() createBudget: CreateBudgetDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  create(@Body() createBudget: CreateBudgetDto, @Response({ passthrough: true }) res) {
     return this.budgetService.create(createBudget, res);
   }
 
@@ -92,12 +75,14 @@ export class BudgetController {
     schema: { example: { errors: [{ message: 'Error fetching budgets' }] } },
   })
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get()
   findAll(@Response({ passthrough: true }) res) {
     return this.budgetService.findAll(res);
   }
 
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get(':id')
   findOne(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.budgetService.findOne(id, res);
@@ -131,11 +116,7 @@ export class BudgetController {
   })
   @Roles(['user', 'family_admin'])
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateBudgetDto: UpdateBudgetDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  update(@Param('id') id: string, @Body() updateBudgetDto: UpdateBudgetDto, @Response({ passthrough: true }) res) {
     return this.budgetService.update(id, updateBudgetDto, res);
   }
 
@@ -193,16 +174,8 @@ export class BudgetController {
   })
   @Roles(['family_admin'])
   @Post('family/:familyId')
-  createFamilyBudget(
-    @Param('familyId') familyId: string,
-    @Body() createBudgetDto: CreateBudgetDto,
-    @Response({ passthrough: true }) res,
-  ) {
-    return this.budgetService.createFamilyBudget(
-      familyId,
-      createBudgetDto,
-      res,
-    );
+  createFamilyBudget(@Param('familyId') familyId: string, @Body() createBudgetDto: CreateBudgetDto, @Response({ passthrough: true }) res) {
+    return this.budgetService.createFamilyBudget(familyId, createBudgetDto, res);
   }
 
   @ApiOperation({
@@ -235,10 +208,7 @@ export class BudgetController {
   })
   @Roles(['family_admin', 'user'])
   @Get('family/:familyId')
-  getFamilyBudgets(
-    @Param('familyId') familyId: string,
-    @Response({ passthrough: true }) res,
-  ) {
+  getFamilyBudgets(@Param('familyId') familyId: string, @Response({ passthrough: true }) res) {
     return this.budgetService.getFamilyBudgets(familyId, res);
   }
 }

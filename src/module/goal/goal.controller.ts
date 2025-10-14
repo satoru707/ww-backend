@@ -1,27 +1,12 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Response,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Response, UseGuards, UseInterceptors } from '@nestjs/common';
 import { GoalService } from './goal.service';
+import { UserAwareCacheInterceptor } from '../../user-aware-cache.interceptor';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiSecurity,
-  ApiParam,
-  ApiResponse,
-  ApiOperation,
-  ApiBadRequestResponse,
-} from '@nestjs/swagger';
+import { ApiSecurity, ApiParam, ApiResponse, ApiOperation, ApiBadRequestResponse } from '@nestjs/swagger';
 
 @Controller('goal')
 @ApiSecurity('access_token')
@@ -32,8 +17,7 @@ export class GoalController {
 
   @ApiOperation({
     summary: 'Create a new goal',
-    description:
-      'Endpoint to create a new financial goal for the authenticated user.',
+    description: 'Endpoint to create a new financial goal for the authenticated user.',
   })
   @ApiResponse({
     status: 201,
@@ -67,22 +51,17 @@ export class GoalController {
   })
   @ApiOperation({
     summary: 'Create a new goal',
-    description:
-      'Endpoint to create a new financial goal for the authenticated user.',
+    description: 'Endpoint to create a new financial goal for the authenticated user.',
   })
   @Roles(['user', 'family_admin'])
   @Post()
-  create(
-    @Body() createGoal: CreateGoalDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  create(@Body() createGoal: CreateGoalDto, @Response({ passthrough: true }) res) {
     return this.goalService.create(createGoal, res);
   }
 
   @ApiOperation({
     summary: 'Get all goals',
-    description:
-      'Endpoint to retrieve all financial goals for the authenticated user.',
+    description: 'Endpoint to retrieve all financial goals for the authenticated user.',
   })
   @ApiResponse({
     status: 200,
@@ -117,6 +96,7 @@ export class GoalController {
     },
   })
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get('')
   findAll(@Response({ passthrough: true }) res) {
     return this.goalService.findAll(res);
@@ -124,8 +104,7 @@ export class GoalController {
 
   @ApiOperation({
     summary: 'Get a goal by ID',
-    description:
-      'Endpoint to retrieve a specific financial goal by its ID for the authenticated user.',
+    description: 'Endpoint to retrieve a specific financial goal by its ID for the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -164,6 +143,7 @@ export class GoalController {
     },
   })
   @Roles(['user', 'family_admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get(':id')
   findOne(@Param('id') id: string, @Response({ passthrough: true }) res) {
     return this.goalService.findOne(id, res);
@@ -171,8 +151,7 @@ export class GoalController {
 
   @ApiOperation({
     summary: 'Update a goal',
-    description:
-      'Endpoint to update an existing financial goal for the authenticated user.',
+    description: 'Endpoint to update an existing financial goal for the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -212,18 +191,13 @@ export class GoalController {
   })
   @Roles(['user', 'family_admin'])
   @Patch(':id')
-  update(
-    @Response({ passthrough: true }) res,
-    @Param('id') id: string,
-    @Body() updateGoalDto: UpdateGoalDto,
-  ) {
+  update(@Response({ passthrough: true }) res, @Param('id') id: string, @Body() updateGoalDto: UpdateGoalDto) {
     return this.goalService.update(id, updateGoalDto, res);
   }
 
   @ApiOperation({
     summary: 'Delete a goal',
-    description:
-      'Endpoint to delete a financial goal for the authenticated user.',
+    description: 'Endpoint to delete a financial goal for the authenticated user.',
   })
   @ApiResponse({
     status: 200,

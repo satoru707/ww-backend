@@ -1,27 +1,11 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Response,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Response } from '@nestjs/common';
 import { deptplanService } from './debt_plan.service';
 import { CreatedeptplanDto } from './dto/create-debit_plan.dto';
 import { UpdatedeptplanDto } from './dto/update-debit_plan.dto';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
-import {
-  ApiSecurity,
-  ApiParam,
-  ApiResponse,
-  ApiOperation,
-  ApiBadRequestResponse,
-} from '@nestjs/swagger';
+import { ApiSecurity, ApiParam, ApiResponse, ApiOperation, ApiBadRequestResponse } from '@nestjs/swagger';
 
 @Controller('debit-plan')
 @UseGuards(AuthGuard, RolesGuard)
@@ -32,8 +16,7 @@ export class deptplanController {
 
   @ApiOperation({
     summary: 'Create a new debt plan',
-    description:
-      'Endpoint to create a new debt plan for the authenticated user.',
+    description: 'Endpoint to create a new debt plan for the authenticated user.',
   })
   @ApiResponse({
     status: 201,
@@ -66,17 +49,13 @@ export class deptplanController {
   })
   @Roles(['users', 'family_admin'])
   @Post()
-  create(
-    @Body() createdeptplanDto: CreatedeptplanDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  create(@Body() createdeptplanDto: CreatedeptplanDto, @Response({ passthrough: true }) res) {
     return this.deptplanService.create(createdeptplanDto, res);
   }
 
   @ApiOperation({
     summary: 'Get all debt plans',
-    description:
-      'Endpoint to retrieve all debt plans for the authenticated user.',
+    description: 'Endpoint to retrieve all debt plans for the authenticated user.',
   })
   @ApiResponse({
     status: 200,
@@ -117,8 +96,7 @@ export class deptplanController {
 
   @ApiOperation({
     summary: 'Get a debt plan by ID',
-    description:
-      'Endpoint to retrieve a specific debt plan by its ID for the authenticated user.',
+    description: 'Endpoint to retrieve a specific debt plan by its ID for the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -163,8 +141,7 @@ export class deptplanController {
 
   @ApiOperation({
     summary: 'Update a debt plan',
-    description:
-      'Endpoint to update an existing debt plan for the authenticated user.',
+    description: 'Endpoint to update an existing debt plan for the authenticated user.',
   })
   @ApiParam({
     name: 'id',
@@ -203,18 +180,13 @@ export class deptplanController {
   })
   @Roles(['users', 'family_admin'])
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updatedeptplan: UpdatedeptplanDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  update(@Param('id') id: string, @Body() updatedeptplan: UpdatedeptplanDto, @Response({ passthrough: true }) res) {
     return this.deptplanService.update(id, updatedeptplan, res);
   }
 
   @ApiOperation({
     summary: 'Delete a debt plan',
-    description:
-      'Endpoint to delete a specific debt plan by its ID for the authenticated user.',
+    description: 'Endpoint to delete a specific debt plan by its ID for the authenticated user.',
   })
   @ApiParam({
     name: 'id',

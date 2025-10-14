@@ -1,33 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { Response } from 'express';
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from 'src/common/response.util';
+import { createSuccessResponse, createErrorResponse } from 'src/common/response.util';
 import { verify } from 'jsonwebtoken';
 import { jwtPayload } from 'src/types/types';
-import {
-  getAccessTokenFromReq,
-  getRefreshTokenFromReq,
-} from 'src/common/cookie.util';
+import { getAccessTokenFromReq, getRefreshTokenFromReq } from 'src/common/cookie.util';
 import { safeErrorMessage } from 'src/common/error.util';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
+  ) {}
 
   async find(res: Response) {
     try {
       const tokenStr = getAccessTokenFromReq(res.req);
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([
-          { message: 'Internal Server Error, no secret' },
-        ]);
-      const token = verify(
-        tokenStr ?? '',
-        process.env.JWT_SECRET,
-      ) as unknown as jwtPayload;
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error, no secret' }]);
+      const token = verify(tokenStr ?? '', process.env.JWT_SECRET) as unknown as jwtPayload;
       console.log();
 
       const user = await this.prisma.user.findUnique({
@@ -65,12 +57,11 @@ export class UserService {
       console.log('Body', updateUserDto);
 
       const jwtStr = getAccessTokenFromReq(res.req);
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const token = verify(
-        jwtStr ?? '',
-        process.env.JWT_SECRET,
-      ) as unknown as jwtPayload;
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
+      const token = verify(jwtStr ?? '', process.env.JWT_SECRET) as unknown as jwtPayload;
+
+      // Clear the user's cache before updating
+      await this.cacheManager.del(`${token.sub}:/user/me`);
 
       const user = await this.prisma.user.update({
         where: {
@@ -79,9 +70,7 @@ export class UserService {
         },
         data: {
           name: updateUserDto.name,
-          role: updateUserDto.role
-            ? updateUserDto.role.toUpperCase()
-            : undefined,
+          role: updateUserDto.role ? updateUserDto.role.toUpperCase() : undefined,
         },
         select: {
           tokens: true,
@@ -106,14 +95,10 @@ export class UserService {
         // if upDateuserdto.role == user and user.family_as_admin exists, delete family where user is admin and set familyId of all members to null, set user.family_as_admin to null
         if (updateUserDto.role.toLowerCase() === 'family_admin') {
           if (u.family_as_admin) {
-            return createErrorResponse([
-              { message: 'You are already a family admin' },
-            ]);
+            return createErrorResponse([{ message: 'You are already a family admin' }]);
           }
           if (u.familyId) {
-            return createErrorResponse([
-              { message: 'You are already in a family' },
-            ]);
+            return createErrorResponse([{ message: 'You are already in a family' }]);
           }
           await this.prisma.family.create({
             data: {
@@ -146,7 +131,7 @@ export class UserService {
         // Delete the refresh token cookie
         await this.prisma.token.delete({
           where: {
-            id: u.tokens.filter((token) => token.type === 'REFRESH')[0].id,
+            id: u.tokens.filter(token => token.type === 'REFRESH')[0].id,
           },
         });
         res.clearCookie('refresh_token');
@@ -172,13 +157,9 @@ export class UserService {
 
   async remove(res: Response) {
     try {
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
       const tokenStr = getAccessTokenFromReq(res.req);
-      const user = verify(
-        tokenStr ?? '',
-        process.env.JWT_SECRET,
-      ) as unknown as jwtPayload;
+      const user = verify(tokenStr ?? '', process.env.JWT_SECRET) as unknown as jwtPayload;
       // if (
       //   !(
       //     (user.sub == id && user.role == 'FAMILY_ADMIN') ||
@@ -207,12 +188,8 @@ export class UserService {
   async exportUserData(res: Response) {
     try {
       const jwtStr = getAccessTokenFromReq(res.req);
-      if (!process.env.JWT_SECRET)
-        return createErrorResponse([{ message: 'Internal Server Error' }]);
-      const token = verify(
-        jwtStr ?? '',
-        process.env.JWT_SECRET,
-      ) as unknown as jwtPayload;
+      if (!process.env.JWT_SECRET) return createErrorResponse([{ message: 'Internal Server Error' }]);
+      const token = verify(jwtStr ?? '', process.env.JWT_SECRET) as unknown as jwtPayload;
       const user = await this.prisma.user.findFirst({
         where: {
           id: token.sub,
@@ -236,10 +213,7 @@ export class UserService {
       });
       if (!user) return createErrorResponse([{ message: 'User not found' }]);
 
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=${user.email}_data.json`,
-      );
+      res.setHeader('Content-Disposition', `attachment; filename=${user.email}_data.json`);
       res.setHeader('Content-Type', 'application/json');
       res.send(JSON.stringify(user, null, 2));
     } catch (err: unknown) {

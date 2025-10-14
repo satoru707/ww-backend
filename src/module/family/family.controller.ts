@@ -1,27 +1,11 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Res, UseInterceptors } from '@nestjs/common';
 import { FamilyService } from './family.service';
+import { UserAwareCacheInterceptor } from '../../user-aware-cache.interceptor';
 import { AuthGuard } from '../jwt.guard';
 import { Roles } from '../role.decorator';
 import { RolesGuard } from '../role.guard';
 import { CreateFamilyDto, AddMemberDto } from './dto/family-dto';
-import {
-  ApiSecurity,
-  ApiOperation,
-  ApiResponse,
-  ApiBadRequestResponse,
-  ApiBody,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiSecurity, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import type { Response } from 'express';
 
 @Controller('family')
@@ -34,8 +18,7 @@ export class FamilyController {
   @Roles(['family_admin', 'user'])
   @ApiOperation({
     summary: 'Get family details of the authenticated user',
-    description:
-      'Returns the family details including members if the user belongs to a family.',
+    description: 'Returns the family details including members if the user belongs to a family.',
   })
   @ApiResponse({
     status: 200,
@@ -45,9 +28,7 @@ export class FamilyController {
         id: 'familyId',
         name: 'Family Name',
         admin_id: 'adminUserId',
-        members: [
-          { id: 'memberId', name: 'Member Name', email: ' Member Email' },
-        ],
+        members: [{ id: 'memberId', name: 'Member Name', email: ' Member Email' }],
       },
     },
   })
@@ -55,6 +36,7 @@ export class FamilyController {
     description: 'User has no family or other error.',
     schema: { example: { errors: [{ message: 'User has no family' }] } },
   })
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get()
   get_family(@Res({ passthrough: true }) res: Response) {
     return this.familyService.get_family(res);
@@ -62,8 +44,7 @@ export class FamilyController {
 
   @ApiOperation({
     summary: 'Create a new family',
-    description:
-      'Allows a user with the family_admin role to create a new family.',
+    description: 'Allows a user with the family_admin role to create a new family.',
   })
   @ApiBody({ type: CreateFamilyDto, description: 'Family creation details' })
   @ApiResponse({
@@ -79,17 +60,13 @@ export class FamilyController {
   })
   @Roles(['family_admin'])
   @Post()
-  create(
-    @Body() body: CreateFamilyDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  create(@Body() body: CreateFamilyDto, @Res({ passthrough: true }) res: Response) {
     return this.familyService.create(body.name, res);
   }
 
   @ApiOperation({
     summary: 'Add a member to the family',
-    description:
-      'Sends an invitation to the specified email to join the family.',
+    description: 'Sends an invitation to the specified email to join the family.',
   })
   @ApiBody({ type: AddMemberDto })
   @ApiResponse({
@@ -106,17 +83,12 @@ export class FamilyController {
   @Roles(['family_admin'])
   @Post('add_member')
   add_member(@Body() body: AddMemberDto) {
-    return this.familyService.add_member(
-      body.familyId,
-      body.familyName,
-      body.email,
-    );
+    return this.familyService.add_member(body.familyId, body.familyName, body.email);
   }
 
   @ApiOperation({
     summary: 'Accept a family invitation',
-    description:
-      'Accepts the family invitation using the provided nonce token.',
+    description: 'Accepts the family invitation using the provided nonce token.',
   })
   @ApiParam({ name: 'nonce', type: 'string' })
   @ApiResponse({
@@ -222,6 +194,7 @@ export class FamilyController {
     schema: { example: { errors: [{ message: 'Error retrieving families' }] } },
   })
   @Roles(['admin'])
+  @UseInterceptors(UserAwareCacheInterceptor)
   @Get('all_families')
   get_all() {
     return this.familyService.getAll();
